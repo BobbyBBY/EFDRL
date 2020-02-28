@@ -1,4 +1,4 @@
-import ipdb
+# import ipdb
 import numpy as np
 import scipy.io as sio
 
@@ -122,7 +122,7 @@ class Environment(object):
         manhattan_distance = abs(sum(self.b_xy - self.a_xy))
 
         if self.args.use_instant_distance:
-            r_ab = self.image_dim / (manhattan_distance + 1.0)
+            r_ab = self.image_dim / (manhattan_distance + 1.0) # 加一避免除数为0
             reward += r_ab
         if manhattan_distance <= 1:
             reward += self.terminal_reward

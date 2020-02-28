@@ -24,7 +24,7 @@ def conv2d_flipkernel(x, k, name=None):
                         strides=(1, 1, 1, 1), padding='SAME')
 
 def save_pkl(obj, path):
-    with open(path, 'w') as f:
+    with open(path, 'wb') as f:
         pickle.dump(obj, f)
 
 

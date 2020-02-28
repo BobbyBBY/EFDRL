@@ -1,5 +1,5 @@
 import os
-import ipdb
+# import ipdb
 import numpy as np
 import tensorflow as tf
 from utils import save_pkl, load_pkl
@@ -106,7 +106,6 @@ class FRLDQN(object):
                 summary += [l1, l2, l1_flat, l2_flat, l3, l4, out_layer, '']
                 return out_layer
 
-
         def build_mlp(name, weight, alpha_q, beta_q, summary=summary):
             # MLP network for combining two Q-value tensors
             with tf.compat.v1.variable_scope(name):
@@ -185,12 +184,11 @@ class FRLDQN(object):
             self.loss_alpha = tf.reduce_sum(tf.square(self.delta_alpha), name='loss_alpha')
             self.loss_frl = tf.reduce_sum(tf.square(self.delta_frl), name='loss_frl')
             
-            # 兼容性修改
             self.train_full_dqn = tf.compat.v1.train.AdamOptimizer(self.learning_rate).minimize(self.loss_full)
             self.train_single_beta = tf.compat.v1.train.AdamOptimizer(self.learning_rate).minimize(self.loss_beta)
             self.train_single_alpha = tf.compat.v1.train.AdamOptimizer(self.learning_rate).minimize(self.loss_alpha)
             # experimentally we can train both alpha network and beta network at the same time
-            self.train_frl = tf.compat.v1.AdamOptimizer(self.learning_rate).minimize(self.loss_frl)
+            self.train_frl = tf.compat.v1.train.AdamOptimizer(self.learning_rate).minimize(self.loss_frl)
             
             # but in reality, we should train the two networks separatelly
             self.mlp_weights, self.alpha_weights, self.beta_weights = [], [], []
@@ -206,7 +204,7 @@ class FRLDQN(object):
             #ipdb.set_trace()
             if not self.preset_lambda:
                 self.mlp_grads = tf.gradients(self.loss_frl, self.mlp_weights)
-                self.train_mlp = tf.compat.v1.AdamOptimizer(self.learning_rate).apply_gradients(zip(self.mlp_grads, self.mlp_weights))
+                self.train_mlp = tf.compat.v1.train.AdamOptimizer(self.learning_rate).apply_gradients(zip(self.mlp_grads, self.mlp_weights))
                 # compute the gradients and pass them to alpha and beta network
                 self.dloss_dQa = tf.gradients(self.loss_frl, self.alpha_q_input)
                 self.dloss_dQb = tf.gradients(self.loss_frl, self.beta_q_input)
@@ -215,14 +213,14 @@ class FRLDQN(object):
                 self.dloss_dQb_input = tf.compat.v1.placeholder(tf.float32, [None, self.num_actions], 'dloss_dQb_input')
                 #self.beta_weights = [tensor for name, tensor in self.frl_w.items() if 'beta' in name]
                 self.beta_grads = tf.gradients(self.beta_q, self.beta_weights, self.dloss_dQb_input)
-                self.train_beta = tf.compat.v1.AdamOptimizer(self.learning_rate).apply_gradients(zip(self.beta_grads, self.beta_weights))
+                self.train_beta = tf.compat.v1.train.AdamOptimizer(self.learning_rate).apply_gradients(zip(self.beta_grads, self.beta_weights))
 
                 # train alpha net 
                 self.dloss_dQa_input = tf.compat.v1.placeholder(tf.float32, [None, self.num_actions], 'dloss_dQa_input')
                 #self.alpha_weights = [tensor for name, tensor in self.frl_w.items() if 'alpha' in name]
                 #self.alpha_weights.append(self.pos_emb)
                 self.alpha_grads = tf.gradients(self.alpha_q, self.alpha_weights, self.dloss_dQa_input)
-                self.train_alpha = tf.compat.v1.AdamOptimizer(self.learning_rate).apply_gradients(zip(self.alpha_grads, self.alpha_weights))
+                self.train_alpha = tf.compat.v1.train.AdamOptimizer(self.learning_rate).apply_gradients(zip(self.alpha_grads, self.alpha_weights))
                 
         tf.compat.v1.global_variables_initializer().run()
 
@@ -262,7 +260,6 @@ class FRLDQN(object):
             else:
                 for name in self.frl_w:
                     self.frl_t_w_assign_op[name].eval({self.frl_t_w_input[name]: self.frl_t_w[name].eval()})
-
 
 
     def train(self, minibatch):
@@ -350,11 +347,25 @@ class FRLDQN(object):
                                          })
 
         elif self.args.train_mode == 'frl_lambda':
+            '''
+             _, delta, loss = self.sess.run([self.train_frl, 
+                                            self.delta_frl, 
+                                            self.loss_frl
+                                         ],
+                                         {  
+                                            self.s_b: pre_states_beta,
+                                            self.s_a: pre_states_alpha,
+                                            self.target_q: targets
+                                         })
+            '''
             _, delta, loss = self.sess.run([self.train_frl, 
                                             self.delta_frl, 
                                             self.loss_frl
                                          ],
-                                         {  self.s_b: pre_states_beta,
+                                         {  
+                                            self.alpha_q_input: pre_q_alpha,
+                                            self.beta_q_input: pre_q_beta,
+                                            self.s_b: pre_states_beta,
                                             self.s_a: pre_states_alpha,
                                             self.target_q: targets
                                          })
@@ -455,7 +466,6 @@ class FRLDQN(object):
                 print('Saving frl mlp network weights ...')
                 for name in self.frl_w:
                     save_pkl(self.frl_w[name].eval(), os.path.join(weight_dir, "frl_%s.pkl" % name))
-
 
 
     def load_weights(self, weight_dir):

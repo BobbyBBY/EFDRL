@@ -1,5 +1,5 @@
 # coding: utf-8
-import ipdb
+# import ipdb
 import numpy as np
 from tqdm import tqdm
 
@@ -79,16 +79,16 @@ class Agent(object):
                 ep_rewards.append(r)
                 self.total_train_steps += 1
 
-            print('domain: %d \t min_steps: %d \t max_steps: %d' % (self.env.dom_ind, self.env.min_steps, self.env.max_steps))
+            # print('domain: %d \t min_steps: %d \t max_steps: %d' % (self.env.dom_ind, self.env.min_steps, self.env.max_steps))
             if len(ep_loss) > 0:
                 avg_loss = sum(ep_loss) / len(ep_loss)
                 max_loss = max(ep_loss)
                 min_loss = min(ep_loss)
-                print('max_loss: {:>6.6f}\t min_loss: {:>6.6f}\t avg_loss: {:>6.6f}'.format(max_loss, min_loss, avg_loss))
+                # print('max_loss: {:>6.6f}\t min_loss: {:>6.6f}\t avg_loss: {:>6.6f}'.format(max_loss, min_loss, avg_loss))
             
             cum_reward = sum(ep_rewards)
             details.append(self.env.episode_reward)
-            print('epochs: {}\t episodes: {}\t steps: {}\t cum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, cum_reward))
+            # print('epochs: {}\t episodes: {}\t steps: {}\t cum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, cum_reward))
             
             ep_loss, ep_rewards = [], []
             self.env.restart(data_flag='train')
@@ -138,8 +138,8 @@ class Agent(object):
             log_step_success[k] = log_step_success[k] / test_epidodes
         log_step_success[-1] = success_rate
 
-        print('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}'.format(epoch, avg_reward, avg_steps, step_diff))
-        print('episodes: {}\t success_rate: {}\n'.format(test_epidodes, log_step_success)) 
+        # print('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}'.format(epoch, avg_reward, avg_steps, step_diff))
+        # print('episodes: {}\t success_rate: {}\n'.format(test_epidodes, log_step_success)) 
         outfile.write('-----{}-----\n'.format(predict_net))
         outfile.write('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}\n'.format(epoch, avg_reward, avg_steps, step_diff))
         outfile.write('episodes: {}\t success_rate: {}\n\n'.format(test_epidodes, log_step_success))   

@@ -1,6 +1,6 @@
 #coding:utf-8
 import time
-import ipdb
+# import ipdb
 import argparse
 import tensorflow as tf
 
@@ -45,8 +45,8 @@ def args_init():
     netarg.add_argument("--gamma",              type=float,     default=0.9,    help="")
     netarg.add_argument("--lambda_",            type=float,     default=0.5,    help="")
     netarg.add_argument("--preset_lambda",      type=str2bool,  default=False,  help="")
-    netarg.add_argument("--add_train_noise",    type=str2bool,  default=True,   help="")
-    netarg.add_argument("--add_predict_noise",  type=str2bool,  default=True,   help="")
+    netarg.add_argument("--add_train_noise",    type=str2bool,  default=False,   help="")
+    netarg.add_argument("--add_predict_noise",  type=str2bool,  default=False,   help="")
     netarg.add_argument("--noise_prob",         type=float,     default=0.5,    help="")
     netarg.add_argument("--stddev",             type=float,     default=1.0,    help="")
 

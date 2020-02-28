@@ -1,5 +1,5 @@
 # coding: utf-8
-import ipdb
+# import ipdb
 import numpy as np
 
 class ReplayMemory(object):
@@ -36,7 +36,7 @@ class ReplayMemory(object):
         
     def add(self, action, reward, state_alpha, state_beta, terminal):
         #assert state.shape == self.dims
-        # NB! state is post-state, after action and reward
+        # NB(Nota Bene)! state is post-state, after action and reward
         self.actions[self.current] = action
         self.rewards[self.current] = reward
         self.states_alpha[self.current] = state_alpha[0, -1]
@@ -53,12 +53,13 @@ class ReplayMemory(object):
         post_states_beta = np.zeros([self.batch_size, self.hist_len, self.state_beta_dim, self.state_beta_dim])
         post_states_alpha = np.zeros([self.batch_size, self.hist_len, self.state_alpha_dim, self.state_alpha_dim])
         if self.priority:
+            # 择优回放。经验回放时，选取一组经验同时训练，pos_amount表示该组中，reward>reward_bound的经验元素的个数。
             pos_amount =  int(self.positive_rate*self.batch_size) 
 
         indices = []
         count_pos = 0
         count_neg = 0
-        count_all = 0 
+        count_all = 0
         count_ter = 0
         max_circles = 1000 # max times for choosing positive samples or nagative samples
         while len(indices) < self.batch_size:
