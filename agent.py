@@ -1,22 +1,17 @@
 # coding: utf-8
-# import ipdb
-import numpy as np
+import random
 from tqdm import tqdm
 
-
 class Agent(object):
-    """docstring for Agent"""
     def __init__(self, env, mem, dqn, args):
         self.env = env
         self.mem = mem
         self.net = dqn
-        
         self.exp_rate_start = args.exploration_rate_start
         self.exp_rate_end = args.exploration_rate_end
         self.exp_decay_steps = args.exploration_decay_steps
         self.exploration_rate_test = args.exploration_rate_test
         self.total_train_steps = args.start_epoch * args.train_episodes * args.image_dim
-
         self.train_frequency = args.train_frequency
         self.target_steps = args.target_steps
         self.num_actions = args.num_actions
@@ -31,16 +26,24 @@ class Agent(object):
         else:
             return self.exp_rate_end
 
+    # 返回最大的Q值的下标
+    def argmax_Q(self, output):
+        temp_i = 0
+        for i in range(len(output)):
+            # 此数是 <= 还是 < ，无依据
+            if output[temp_i] <= output[i]:
+                temp_i = i
+        return temp_i
 
     def step(self, exploration_rate, predict_net):
         # exploration rate determines the probability of random moves
-        if np.random.rand() < exploration_rate:
-            action = np.random.randint(self.num_actions)
+        if random.random() < exploration_rate:
+            action = random.randint(0,self.num_actions-1)
         else:
             # otherwise choose action with highest Q-value
             state_alpha= self.env.getState()
             qvalue = self.net.predict(state_alpha, predict_net)
-            action = np.argmax(qvalue)
+            action = self.argmax_Q(qvalue)
             
         # perform the action  
         self.steps += 1
@@ -48,10 +51,10 @@ class Agent(object):
         state_alpha = self.env.getState()
         terminal = self.env.isTerminal()
         
-        return action, reward, state_alpha, None, terminal
+        return action, reward, state_alpha, terminal
 
 
-    def train(self, epoch, train_episodes, outfile, predict_net):
+    def train(self, epoch, train_episodes, predict_net):
         ep_loss, ep_rewards, details = [], [], []
         min_samples = self.mem.batch_size + self.mem.hist_len
         
@@ -62,8 +65,8 @@ class Agent(object):
             terminal = False
             while not terminal:
                 # 此处state是t+1时的state，即执行act之后的状态
-                act, r, s_a, s_b, terminal = self.step(self._explorationRate(), predict_net)
-                self.mem.add(act, r, s_a, s_b, terminal)
+                act, r, s_a, terminal = self.step(self._explorationRate(), predict_net)
+                self.mem.add(act, r, s_a, terminal)
                 # Update target network every target_steps steps
                 if self.target_steps and self.total_train_steps % self.target_steps == 0:
                     self.net.update_target_network()
@@ -73,7 +76,7 @@ class Agent(object):
                     # sample minibatch
                     minibatch = self.mem.getMinibatch()
                     # train the network
-                    delta, loss = self.net.train(minibatch)
+                    loss = self.net.train(minibatch)
                     ep_loss.append(loss)
 
                 ep_rewards.append(r)
@@ -86,19 +89,19 @@ class Agent(object):
                 min_loss = min(ep_loss)
                 # print('max_loss: {:>6.6f}\t min_loss: {:>6.6f}\t avg_loss: {:>6.6f}'.format(max_loss, min_loss, avg_loss))
             
-            cum_reward = sum(ep_rewards)
-            details.append(self.env.episode_reward)
-            # print('epochs: {}\t episodes: {}\t steps: {}\t cum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, cum_reward))
+            sum_reward = sum(ep_rewards)
+            # details.append(self.env.episode_reward)# 这个返回值没有被用到
+            # print('epochs: {}\t episodes: {}\t steps: {}\t sum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, sum_reward))
             
             ep_loss, ep_rewards = [], []
             self.env.restart(data_flag='train')
 
         self.env.last_train_dom = self.env.dom_ind  # record last training domain
 
-        return details
+        return None
 
 
-    def test(self, epoch, test_epidodes, outfile, predict_net, data_flag):
+    def test(self, epoch, test_epidodes, predict_net, data_flag):
         success = 0.0
         min_steps = 0.0
         real_steps = 0.0
@@ -106,15 +109,15 @@ class Agent(object):
         avg_reward = 0.0
         log_step_success = {1: 0.0, 3: 0.0, 5: 0.0, 10: 0.0}
 
-        print('\n\n %s %s net ...' % (data_flag, predict_net))
-        outfile.write('\n\n %s %s net ...\n' % (data_flag, predict_net))
+        print('\n %s %s net ...' % (data_flag, predict_net))
         self.steps = 0
         self.env.restart(data_flag=data_flag, init=True)
+        #tqdm是进度条
         for ep in tqdm(range(test_epidodes)):
             terminal = False
             ep_rewards = []
             while not terminal:
-                act, r, s_a, s_b, terminal = self.step(self.exploration_rate_test, predict_net)
+                act, r, s_a, terminal = self.step(self.exploration_rate_test, predict_net)
                 ep_rewards.append(r)
 
             test_reward += sum(ep_rewards)
@@ -136,11 +139,5 @@ class Agent(object):
         for k in log_step_success:
             log_step_success[k] = log_step_success[k] / test_epidodes
         log_step_success[-1] = success_rate
-
-        # print('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}'.format(epoch, avg_reward, avg_steps, step_diff))
-        # print('episodes: {}\t success_rate: {}\n'.format(test_epidodes, log_step_success)) 
-        outfile.write('-----{}-----\n'.format(predict_net))
-        outfile.write('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}\n'.format(epoch, avg_reward, avg_steps, step_diff))
-        outfile.write('episodes: {}\t success_rate: {}\n\n'.format(test_epidodes, log_step_success))   
 
         return log_step_success, avg_reward, step_diff

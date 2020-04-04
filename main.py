@@ -1,14 +1,12 @@
 #coding:utf-8
 import time
-# import ipdb
 import argparse
-import tensorflow as tf
+import torch
 
 from agent import Agent
 from deep_q_network import FRLDQN
 from environment import Environment
 from replay_memory import ReplayMemory
-from utils import get_time, str2bool
 
 
 
@@ -49,6 +47,7 @@ def args_init():
     netarg.add_argument("--add_predict_noise",  type=str2bool,  default=False,   help="")
     netarg.add_argument("--noise_prob",         type=float,     default=0.5,    help="")
     netarg.add_argument("--stddev",             type=float,     default=1.0,    help="")
+    netarg.add_argument("--device_type",        type=torch.device,     default=torch.device("cpu"),    help="")
 
     antarg = parser.add_argument_group('Agent')
     antarg.add_argument("--exploration_rate_start",     type=float, default=1,      help="")
@@ -65,7 +64,7 @@ def args_init():
     mainarg.add_argument("--stop_epoch_gap",    type=int,       default=10,         help="")
     mainarg.add_argument("--success_base",      type=int,       default=-1,         help="")
     mainarg.add_argument("--load_weights",      type=str2bool,  default=False,      help="")
-    mainarg.add_argument("--save_weights",      type=str2bool,  default=True,       help="")
+    mainarg.add_argument("--save_weights",      type=str2bool,  default=False,       help="")
     mainarg.add_argument("--predict_net",       type=str,       default='alpha',     help="")
     mainarg.add_argument("--result_dir",        type=str,       default="preset_lambda",     help="") #
     mainarg.add_argument("--train_mode",        type=str,       default='single_alpha',     help='')
@@ -86,73 +85,68 @@ def args_init():
         args.train_mode, args.predict_net, args.image_dim, args.state_dim, args.hist_len, args.result_dir)
     return args
 
+def get_time():
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+def str2bool(v):
+    return v.lower() in ("yes", "true", "t", "1")
 
 def train_single_net(args):
     start = time.time()
     print('Current time is: %s' % get_time())
     print('Starting at train_multi_nets...')
+    # 定义是否使用GPU
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        # args.device_type = torch.device("cuda")
+        args.device_type = torch.device("cpu")
+        print("CUDA is available.")
+    else:
+        args.device_type = torch.device("cpu")
+        print("CUDA is not available, fall back to CPU.")
 
-    gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=args.gpu_fraction)
-    
-    with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options)) as sess:
-        # Initial environment, replay memory, deep_q_net and agent
-        # ipdb.set_trace()
-        env = Environment(args)
-        mem = ReplayMemory(args)
-        net = FRLDQN(sess, args)
-        agent = Agent(env, mem, net, args)
+    # Initial environment, replay memory, deep_q_net and agent
+    env = Environment(args)
+    mem = ReplayMemory(args)
+    net = FRLDQN(args)
+    agent = Agent(env, mem, net, args)
 
-        best_result = {'valid': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
-                        'test': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}
-        }
+    best_result = {'valid': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
+                    'test': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}
+    }
 
-        # loop over epochs
-        with open(args.result_dir, 'w') as outfile:
-            # 将参数写进xx文件
-            print('\n Arguments:')
-            outfile.write('\n Arguments:\n')
-            for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
-                print('{}: {}'.format(k, v))
-                outfile.write('{}: {}\n'.format(k, v))
-            print('\n')
-            outfile.write('\n')
+    # 打印参数
+    # print('\n Arguments:')
+    # for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
+    #     print('{}: {}'.format(k, v))
+    # print('\n')
 
-            try:
-                for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
-                    agent.train(epoch, args.train_episodes, outfile, args.predict_net)
-                    print("test ",epoch)
-                    rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'valid')
+    try:
+        for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
+            agent.train(epoch, args.train_episodes, args.predict_net)
+            print("test ",epoch)
+            rate, reward, diff = agent.test(epoch, args.test_episodes, args.predict_net, 'valid')
 
-                    if rate[args.success_base] > best_result['valid']['success_rate'][args.success_base]:
-                        update_best(best_result, 'valid', epoch, rate, reward, diff)
-                        print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
-                        outfile.write('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(epoch, rate, reward, diff))
+            if rate[args.success_base] > best_result['valid']['success_rate'][args.success_base]:
+                update_best(best_result, 'valid', epoch, rate, reward, diff)
+                print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
 
-                        rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'test')
-                        update_best(best_result, 'test', epoch, rate, reward, diff)
-                        print('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
-                        outfile.write('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
+                rate, reward, diff = agent.test(epoch, args.test_episodes, args.predict_net, 'test')
+                update_best(best_result, 'test', epoch, rate, reward, diff)
+                print('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
 
+            if epoch - best_result['valid']['log_epoch'] >= args.stop_epoch_gap:
+                print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
+                break
+    except KeyboardInterrupt:
+        print('\n Manually kill the program ... \n')
 
-                    if epoch - best_result['valid']['log_epoch'] >= args.stop_epoch_gap:
-                        print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
-                        break
-
-            except KeyboardInterrupt:
-                print('\n Manually kill the program ... \n')
-
-            print('\n\n Best results:')
-            outfile.write('\n\n Best results:\n')
-            for data_flag, results in best_result.items():
-                print('\t{}'.format(data_flag))
-                outfile.write('\t{}\n'.format(data_flag))
-                for k, v in results.items():
-                    print('\t\t{}: {}'.format(k, v))
-                    outfile.write('\t\t{}: {}\n'.format(k, v))
-            end = time.time()
-            outfile.write('\nTotal time cost: %ds\n' % (end - start))
-            
-
+    print('\n\n Best results:')
+    for data_flag, results in best_result.items():
+        print('\t{}'.format(data_flag))
+        for k, v in results.items():
+            print('\t\t{}: {}'.format(k, v))
+    end = time.time()          
     print('Current time is: %s' % get_time())
     print('Total time cost: %ds\n' % (end - start))
 
