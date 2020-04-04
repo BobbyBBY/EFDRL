@@ -1,6 +1,7 @@
 # FRL
 
 ### Code for the paper 'Federated Reinforcement Learning'
+https://github.com/BobbyBBY/FedDRL，使其应用于pytorch
 
 ## Running
 
