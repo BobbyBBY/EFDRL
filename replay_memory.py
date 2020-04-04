@@ -19,7 +19,6 @@ class ReplayMemory(object):
         self.actions = np.zeros(self.size, dtype=np.uint8)
         self.rewards = np.zeros(self.size, dtype=np.float32)
         self.states_alpha = np.zeros([self.size, self.state_alpha_dim, self.state_alpha_dim], dtype=np.uint8)
-        self.states_beta = np.zeros([self.size, self.state_beta_dim, self.state_beta_dim], dtype=np.uint8)
         self.terminals = np.zeros(self.size, dtype=np.bool)
 
 
@@ -27,7 +26,6 @@ class ReplayMemory(object):
         print('Reset the replay memory')
         self.actions *= 0
         self.rewards *= 0.0
-        self.states_beta *= 0
         self.states_alpha *= 0
         self.terminals *= False
         self.count = 0
@@ -40,7 +38,6 @@ class ReplayMemory(object):
         self.actions[self.current] = action
         self.rewards[self.current] = reward
         self.states_alpha[self.current] = state_alpha[0, -1]
-        self.states_beta[self.current] = state_beta[0, -1]
         self.terminals[self.current] = terminal
         self.count = max(self.count, self.current + 1)  
         self.current = (self.current + 1) % self.size
@@ -48,9 +45,7 @@ class ReplayMemory(object):
 
     def getMinibatch(self):
         #ipdb.set_trace()
-        pre_states_beta = np.zeros([self.batch_size, self.hist_len, self.state_beta_dim, self.state_beta_dim])
         pre_states_alpha = np.zeros([self.batch_size, self.hist_len, self.state_alpha_dim, self.state_alpha_dim])
-        post_states_beta = np.zeros([self.batch_size, self.hist_len, self.state_beta_dim, self.state_beta_dim])
         post_states_alpha = np.zeros([self.batch_size, self.hist_len, self.state_alpha_dim, self.state_alpha_dim])
         if self.priority:
             # 择优回放。经验回放时，选取一组经验同时训练，pos_amount表示该组中，reward>reward_bound的经验元素的个数。
@@ -94,9 +89,7 @@ class ReplayMemory(object):
                     break
                 cur_ind = self.hist_len - i
                 pre_states_alpha[len(indices)][cur_ind] = self.states_alpha[index - i]
-                pre_states_beta[len(indices)][cur_ind] = self.states_beta[index - i]
                 post_states_alpha[len(indices)][cur_ind] = self.states_alpha[index - i + 1]
-                post_states_beta[len(indices)][cur_ind] = self.states_beta[index - i + 1]
             # pre_states_beta[len(indices)] = self.states_beta[index-self.hist_len-1: index-1]
             # pre_states_alpha[len(indices)] = self.states_alpha[index-self.hist_len-1: index-1]
             # post_states_beta[len(indices)] = self.states_beta[index-self.hist_len: index]
@@ -108,8 +101,6 @@ class ReplayMemory(object):
         rewards = self.rewards[indices]
         terminals = self.terminals[indices]
         pre_states_alpha = np.transpose(pre_states_alpha, (0, 2, 3, 1))
-        pre_states_beta = np.transpose(pre_states_beta, (0, 2, 3, 1))
         post_states_alpha = np.transpose(post_states_alpha, (0, 2, 3, 1))
-        post_states_beta = np.transpose(post_states_beta, (0, 2, 3, 1))
 
-        return pre_states_alpha, pre_states_beta, actions, rewards, post_states_alpha, post_states_beta, terminals
+        return pre_states_alpha, None, actions, rewards, post_states_alpha, None, terminals

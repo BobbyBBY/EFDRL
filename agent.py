@@ -38,30 +38,30 @@ class Agent(object):
             action = np.random.randint(self.num_actions)
         else:
             # otherwise choose action with highest Q-value
-            state_alpha, state_beta = self.env.getState()
-            qvalue = self.net.predict(state_alpha, state_beta, predict_net)
+            state_alpha= self.env.getState()
+            qvalue = self.net.predict(state_alpha, predict_net)
             action = np.argmax(qvalue)
             
         # perform the action  
         self.steps += 1
         reward = self.env.act(action, self.steps)
-        state_alpha, state_beta = self.env.getState()
+        state_alpha = self.env.getState()
         terminal = self.env.isTerminal()
         
-        return action, reward, state_alpha, state_beta, terminal
+        return action, reward, state_alpha, None, terminal
 
 
     def train(self, epoch, train_episodes, outfile, predict_net):
         ep_loss, ep_rewards, details = [], [], []
         min_samples = self.mem.batch_size + self.mem.hist_len
         
-        #ipdb.set_trace()
         print('\n\n Training [%s] predicting [%s] ...' % (self.net.args.train_mode, predict_net))
         self.env.restart(data_flag='train', init=True)
         for episodes in range(train_episodes):
             self.steps = 0
             terminal = False
             while not terminal:
+                # 此处state是t+1时的state，即执行act之后的状态
                 act, r, s_a, s_b, terminal = self.step(self._explorationRate(), predict_net)
                 self.mem.add(act, r, s_a, s_b, terminal)
                 # Update target network every target_steps steps
@@ -117,8 +117,7 @@ class Agent(object):
                 act, r, s_a, s_b, terminal = self.step(self.exploration_rate_test, predict_net)
                 ep_rewards.append(r)
 
-            cum_reward = sum(ep_rewards)
-            test_reward += cum_reward
+            test_reward += sum(ep_rewards)
             if self.env.episode_reward[-1][-1] <= 1: # distance = 0 or 1 means that alpha meets beta
                 success += 1.0
                 min_steps += self.env.min_steps

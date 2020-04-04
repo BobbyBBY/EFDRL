@@ -93,9 +93,7 @@ class Environment(object):
         self.terminal = False
         self.episode_reward = []
         self.states_alpha = np.zeros([1, self.hist_len, self.state_alpha_dim, self.state_alpha_dim], dtype=np.float32)
-        self.states_beta = np.zeros([1, self.hist_len, self.state_beta_dim, self.state_beta_dim], dtype=np.float32)
         self.states_alpha[0, -1] = self.state[self.a_xy[0]-1-pd: self.a_xy[0]+2+pd, self.a_xy[1]-1-pd: self.a_xy[1]+2+pd]
-        self.states_beta[0, -1] = self.state[self.b_xy[0]-1: self.b_xy[0]+2, self.b_xy[1]-1: self.b_xy[1]+2]
 
 
 
@@ -138,15 +136,11 @@ class Environment(object):
         pd = self.image_padding
         self.states_alpha[0, : -1] = self.states_alpha[0, 1: ]
         self.states_alpha[0, -1] = self.state[self.a_xy[0]-1-pd: self.a_xy[0]+2+pd, self.a_xy[1]-1-pd: self.a_xy[1]+2+pd]
-
-        self.states_beta[0, : -1] = self.states_beta[0, 1: ]
-        self.states_beta[0, -1] = self.state[self.b_xy[0]-1: self.b_xy[0]+2, self.b_xy[1]-1: self.b_xy[1]+2]
-
         return reward
 
 
     def getState(self):
-        return self.states_alpha, self.states_beta
+        return self.states_alpha
 
 
     def isTerminal(self):

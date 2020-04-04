@@ -66,9 +66,9 @@ def args_init():
     mainarg.add_argument("--success_base",      type=int,       default=-1,         help="")
     mainarg.add_argument("--load_weights",      type=str2bool,  default=False,      help="")
     mainarg.add_argument("--save_weights",      type=str2bool,  default=True,       help="")
-    mainarg.add_argument("--predict_net",       type=str,       default='both',     help="")
+    mainarg.add_argument("--predict_net",       type=str,       default='alpha',     help="")
     mainarg.add_argument("--result_dir",        type=str,       default="preset_lambda",     help="") #
-    mainarg.add_argument("--train_mode",        type=str,       default='frl_lambda',     help='')
+    mainarg.add_argument("--train_mode",        type=str,       default='single_alpha',     help='')
     mainarg.add_argument("--train_episodes",    type=int,       default=100,        help="") #
     mainarg.add_argument("--valid_episodes",    type=int,       default=800,        help="") #
     mainarg.add_argument("--test_episodes",     type=int,       default=800,        help="") #
@@ -96,7 +96,7 @@ def train_single_net(args):
     
     with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options)) as sess:
         # Initial environment, replay memory, deep_q_net and agent
-        #ipdb.set_trace()
+        # ipdb.set_trace()
         env = Environment(args)
         mem = ReplayMemory(args)
         net = FRLDQN(sess, args)
@@ -108,6 +108,7 @@ def train_single_net(args):
 
         # loop over epochs
         with open(args.result_dir, 'w') as outfile:
+            # 将参数写进xx文件
             print('\n Arguments:')
             outfile.write('\n Arguments:\n')
             for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
@@ -116,13 +117,10 @@ def train_single_net(args):
             print('\n')
             outfile.write('\n')
 
-            if args.load_weights:
-                filename = 'weights/%s_%s.h5' % (args.train_mode, args.predict_net)
-                net.load_weights(filename)
-
             try:
                 for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
                     agent.train(epoch, args.train_episodes, outfile, args.predict_net)
+                    print("test ",epoch)
                     rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'valid')
 
                     if rate[args.success_base] > best_result['valid']['success_rate'][args.success_base]:
@@ -135,10 +133,6 @@ def train_single_net(args):
                         print('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
                         outfile.write('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
 
-                        if args.save_weights:
-                            filename = 'weights/%s_%s.h5' % (args.train_mode, args.predict_net)
-                            net.save_weights(filename, args.predict_net)
-                            print('Saved weights %s ...\n' % filename)
 
                     if epoch - best_result['valid']['log_epoch'] >= args.stop_epoch_gap:
                         print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
@@ -164,107 +158,6 @@ def train_single_net(args):
 
 
 
-def train_multi_nets(args):
-    start = time.time()
-    print('Current time is: %s' % get_time())
-    print('Starting at train_multi_nets...')
-
-    gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=args.gpu_fraction)
-    
-    with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options)) as sess:
-        # Initial environment, replay memory, deep_q_net and agent
-        #ipdb.set_trace()
-        env = Environment(args)
-        mem = ReplayMemory(args)
-        net = FRLDQN(sess, args)
-        agent = Agent(env, mem, net, args)
-
-        best_result = {'valid': {#'alpha': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
-                                 'beta': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
-                                 'both': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}},
-
-                        'test': {#'alpha': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
-                                 'beta': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
-                                 'both': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}}   
-        }
-
-        # loop over epochs
-        with open(args.result_dir, 'w') as outfile:
-            print('\n Arguments:')
-            outfile.write('\n Arguments:\n')
-            for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
-                print('{}: {}'.format(k, v))
-                outfile.write('{}: {}\n'.format(k, v))
-            print('\n')
-            outfile.write('\n')
-
-            if args.load_weights:
-                filename = 'weights/%s_both.h5' % args.train_mode
-                net.load_weights(filename)
-
-            try:
-                for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
-                    agent.train(epoch, args.train_episodes, outfile, 'both')
-                    rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, 'both', 'valid')
-
-                    if rate[args.success_base] > best_result['valid']['both']['success_rate'][args.success_base]:
-                        update_best(best_result, 'valid', epoch, rate, reward, diff, 'both')
-                        print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
-                        outfile.write('[both] \t best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(epoch, rate, reward, diff))
-
-                        rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, 'both', 'test')
-                        update_best(best_result, 'test', epoch, rate, reward, diff, 'both')
-                        print('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
-                        outfile.write('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(rate, reward, diff))
-
-                        if args.test_multi_nets:
-                        #for net_name in ['alpha', 'beta']:
-                            net_name = 'beta'
-                            rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, net_name, 'valid')
-                            update_best(best_result, 'valid', epoch, rate, reward, diff, net_name)
-                            print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
-                            outfile.write('[{}] \t best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(net_name, epoch, rate, reward, diff))
-
-                            rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, net_name, 'test')
-                            update_best(best_result, 'test', epoch, rate, reward, diff, net_name)
-                            print('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
-                            outfile.write('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(rate, reward, diff))
-    
-
-                        if args.save_weights:
-                            filename = 'weights/%s_both.h5' % args.train_mode
-                            net.save_weights(filename, 'both')
-                            print('Saved weights %s ...\n' % filename)
-
-                        outfile.write('\n')
-                    
-                    if epoch - best_result['valid']['both']['log_epoch'] >= args.stop_epoch_gap:
-                        print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
-                        break
-
-            except KeyboardInterrupt:
-                print('\n Manually kill the program ... \n')
-
-            print('\n\n Best results:')
-            outfile.write('\n\n Best results:\n')
-            for data_flag, results in best_result.items():
-                print('\t{}'.format(data_flag))
-                outfile.write('\t{}\n'.format(data_flag))
-                for net_name, result in results.items():
-                    print('\t\t{}'.format(net_name))
-                    outfile.write('\t\t{}\n'.format(net_name))
-                    for k, v in result.items():
-                        print('\t\t\t{}: {}'.format(k, v))
-                        outfile.write('\t\t\t{}: {}\n'.format(k, v))
-            end = time.time()
-            outfile.write('\nTotal time cost: %ds\n' % (end - start))
-
-
-    print('Current time is: %s' % get_time())
-    print('Total time cost: %ds\n' % (end - start))
-
-
-
 def update_best(result, data_flag, epoch, rate, reward, diff, net_name=''):
     if net_name:
         result[data_flag][net_name]['success_rate'] = rate
@@ -278,12 +171,7 @@ def update_best(result, data_flag, epoch, rate, reward, diff, net_name=''):
         result[data_flag]['step_diff'] = diff
 
 
-
-
 if __name__ == '__main__':
     args = args_init()
-    if args.train_mode in ['full', 'single_alpha', 'single_beta']:
-        train_single_net(args)
-    else:
-        train_multi_nets(args)
+    train_single_net(args)
 
