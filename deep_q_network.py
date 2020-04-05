@@ -21,7 +21,8 @@ class FRLDQN(object):
         self.hist_len = args.hist_len
         self.state_alpha_dim = args.state_dim + args.image_padding * 2
         self.device = args.device_type
-        self.criterion = torch.nn.MSELoss(reduction='mean').to(self.device)
+        # self.criterion = torch.nn.MSELoss(reduction='mean').to(self.device)
+        self.criterion = self.Square_loss
         self.build_dqn()
 
 
@@ -34,15 +35,6 @@ class FRLDQN(object):
     # 损失函数，平方损失函数
     def Square_loss(self, x, y):
         return torch.mean(torch.pow((x - y), 2))
-
-    # 返回最大的Q值
-    def max_Q(self, output):
-        temp_i = 0
-        for i in range(len(output)):
-            # 此数是 <= 还是 < ，无依据
-            if output[temp_i] <= output[i]:
-                temp_i = i
-        return output[temp_i]
 
     def update_target_network(self):
         self.alpha_t_q=copy.deepcopy(self.alpha_q)

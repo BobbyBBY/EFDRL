@@ -1,5 +1,7 @@
 # coding: utf-8
 import random
+import torch
+import numpy as np
 from tqdm import tqdm
 
 class Agent(object):
@@ -26,15 +28,6 @@ class Agent(object):
         else:
             return self.exp_rate_end
 
-    # 返回最大的Q值的下标
-    def argmax_Q(self, output):
-        temp_i = 0
-        for i in range(len(output)):
-            # 此数是 <= 还是 < ，无依据
-            if output[temp_i] <= output[i]:
-                temp_i = i
-        return temp_i
-
     def step(self, exploration_rate, predict_net):
         # exploration rate determines the probability of random moves
         if random.random() < exploration_rate:
@@ -43,7 +36,7 @@ class Agent(object):
             # otherwise choose action with highest Q-value
             state_alpha= self.env.getState()
             qvalue = self.net.predict(state_alpha, predict_net)
-            action = self.argmax_Q(qvalue)
+            action = torch.argmax(qvalue).item()
             
         # perform the action  
         self.steps += 1
@@ -54,11 +47,11 @@ class Agent(object):
         return action, reward, state_alpha, terminal
 
 
-    def train(self, epoch, train_episodes, predict_net):
+    def train(self, train_episodes, predict_net):
         ep_loss, ep_rewards, details = [], [], []
         min_samples = self.mem.batch_size + self.mem.hist_len
         
-        print('\n\n Training [%s] predicting [%s] ...' % (self.net.args.train_mode, predict_net))
+        print('\nTraining [%s] predicting [%s] ...' % (self.net.args.train_mode, predict_net))
         self.env.restart(data_flag='train', init=True)
         for episodes in range(train_episodes):
             self.steps = 0
@@ -89,7 +82,7 @@ class Agent(object):
                 min_loss = min(ep_loss)
                 # print('max_loss: {:>6.6f}\t min_loss: {:>6.6f}\t avg_loss: {:>6.6f}'.format(max_loss, min_loss, avg_loss))
             
-            sum_reward = sum(ep_rewards)
+            # sum_reward = sum(ep_rewards)#没有用到这个值
             # details.append(self.env.episode_reward)# 这个返回值没有被用到
             # print('epochs: {}\t episodes: {}\t steps: {}\t sum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, sum_reward))
             
@@ -101,7 +94,7 @@ class Agent(object):
         return None
 
 
-    def test(self, epoch, test_epidodes, predict_net, data_flag):
+    def test(self, test_epidodes, predict_net, data_flag):
         success = 0.0
         min_steps = 0.0
         real_steps = 0.0

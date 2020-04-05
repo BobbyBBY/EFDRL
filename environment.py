@@ -8,13 +8,13 @@ class Environment(object):
         where 0 denotes obstacle, 1 denotes space"""
     def __init__(self, args):
         self.args = args
-        self.hist_len = args.hist_len   # 4
-        self.image_dim = args.image_dim # 32
-        self.state_beta_dim = args.state_dim # 3
+        self.hist_len = args.hist_len  
+        self.image_dim = args.image_dim
+        self.state_beta_dim = args.state_dim 
         self.image_padding = args.image_padding
-        self.max_train_doms = args.max_train_doms       # 6400
-        self.start_valid_dom = args.start_valid_dom     # 6400
-        self.start_test_dom = args.start_test_dom       # 7200
+        self.max_train_doms = args.max_train_doms     
+        self.start_valid_dom = args.start_valid_dom     
+        self.start_test_dom = args.start_test_dom     
         self.step_reward = args.step_reward
         self.collision_reward = args.collision_reward
         self.terminal_reward = args.terminal_reward
@@ -33,7 +33,7 @@ class Environment(object):
         data = sio.loadmat('data/gridworld_o_%d.mat' % self.image_dim)
         self.images = data['all_images']
         self.states_xy = data['all_states_xy_by_domain']
-        self.max_domains = len(self.images) # 8000
+        self.max_domains = len(self.images)
         self.preset_max_steps = {8: 38, 16: 86, 32: 178, 64: 246}
         if self.args.automax == 1:
             self.max_steps = self.image_dim * self.image_dim / 2

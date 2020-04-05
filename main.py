@@ -6,8 +6,8 @@ import torch
 from agent import Agent
 from deep_q_network import FRLDQN
 from environment import Environment
-from replay_memory import ReplayMemory
-
+# from replay_memory_torch import ReplayMemory # 数组用torch
+from replay_memory_numpy import ReplayMemory # 数组用numpy
 
 
 def args_init():
@@ -115,23 +115,17 @@ def train_single_net(args):
                     'test': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}
     }
 
-    # 打印参数
-    # print('\n Arguments:')
-    # for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
-    #     print('{}: {}'.format(k, v))
-    # print('\n')
-
     try:
         for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
-            agent.train(epoch, args.train_episodes, args.predict_net)
+            agent.train(args.train_episodes, args.predict_net)
             print("test ",epoch)
-            rate, reward, diff = agent.test(epoch, args.test_episodes, args.predict_net, 'valid')
+            rate, reward, diff = agent.test(args.test_episodes, args.predict_net, 'valid')
 
             if rate[args.success_base] > best_result['valid']['success_rate'][args.success_base]:
                 update_best(best_result, 'valid', epoch, rate, reward, diff)
                 print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
 
-                rate, reward, diff = agent.test(epoch, args.test_episodes, args.predict_net, 'test')
+                rate, reward, diff = agent.test(args.test_episodes, args.predict_net, 'test')
                 update_best(best_result, 'test', epoch, rate, reward, diff)
                 print('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
 
