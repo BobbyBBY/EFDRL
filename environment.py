@@ -8,13 +8,13 @@ class Environment(object):
         where 0 denotes obstacle, 1 denotes space"""
     def __init__(self, args):
         self.args = args
-        self.hist_len = args.hist_len  
-        self.image_dim = args.image_dim
-        self.state_beta_dim = args.state_dim 
+        self.hist_len = args.hist_len 
+        self.image_dim = args.image_dim 
+        self.state_beta_dim = args.state_dim
         self.image_padding = args.image_padding
-        self.max_train_doms = args.max_train_doms     
-        self.start_valid_dom = args.start_valid_dom     
-        self.start_test_dom = args.start_test_dom     
+        self.max_train_doms = args.max_train_doms   
+        self.start_valid_dom = args.start_valid_dom  
+        self.start_test_dom = args.start_test_dom    
         self.step_reward = args.step_reward
         self.collision_reward = args.collision_reward
         self.terminal_reward = args.terminal_reward
@@ -29,11 +29,10 @@ class Environment(object):
 
 
     def load_data(self):
-        #ipdb.set_trace()
         data = sio.loadmat('data/gridworld_o_%d.mat' % self.image_dim)
         self.images = data['all_images']
         self.states_xy = data['all_states_xy_by_domain']
-        self.max_domains = len(self.images)
+        self.max_domains = len(self.images) # 8000
         self.preset_max_steps = {8: 38, 16: 86, 32: 178, 64: 246}
         if self.args.automax == 1:
             self.max_steps = self.image_dim * self.image_dim / 2
@@ -50,7 +49,6 @@ class Environment(object):
 
 
     def restart(self, data_flag, init=False):
-        #ipdb.set_trace()
         if data_flag == 'train':    # training 
             init_dom = 0
             max_dom = self.max_train_doms
@@ -83,7 +81,6 @@ class Environment(object):
                     self.a_xy = self.paths[i, 0][0] + self.pos_bias   #  initial position of alpha
                     self.b_xy = self.paths[i, 0][-1] + self.pos_bias  #  initial position of beta
                     self.min_steps = len(self.paths[i, 0]) / 2  # shortest path
-                    #self.max_steps = len(self.paths[i, 0]) * self.args.max_steps
                 except:
                     continue
                 if self.is_valid_pos(self.a_xy) and self.is_valid_pos(self.b_xy):
@@ -93,7 +90,9 @@ class Environment(object):
         self.terminal = False
         self.episode_reward = []
         self.states_alpha = np.zeros([1, self.hist_len, self.state_alpha_dim, self.state_alpha_dim], dtype=np.float32)
+        self.states_beta = np.zeros([1, self.hist_len, self.state_beta_dim, self.state_beta_dim], dtype=np.float32)
         self.states_alpha[0, -1] = self.state[self.a_xy[0]-1-pd: self.a_xy[0]+2+pd, self.a_xy[1]-1-pd: self.a_xy[1]+2+pd]
+        self.states_beta[0, -1] = self.state[self.b_xy[0]-1: self.b_xy[0]+2, self.b_xy[1]-1: self.b_xy[1]+2]
 
 
 
@@ -136,11 +135,15 @@ class Environment(object):
         pd = self.image_padding
         self.states_alpha[0, : -1] = self.states_alpha[0, 1: ]
         self.states_alpha[0, -1] = self.state[self.a_xy[0]-1-pd: self.a_xy[0]+2+pd, self.a_xy[1]-1-pd: self.a_xy[1]+2+pd]
+
+        self.states_beta[0, : -1] = self.states_beta[0, 1: ]
+        self.states_beta[0, -1] = self.state[self.b_xy[0]-1: self.b_xy[0]+2, self.b_xy[1]-1: self.b_xy[1]+2]
+
         return reward
 
 
     def getState(self):
-        return self.states_alpha
+        return self.states_alpha, self.states_beta
 
 
     def isTerminal(self):
