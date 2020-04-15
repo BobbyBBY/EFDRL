@@ -207,64 +207,64 @@ class FRLDQN(object):
 
 
     def save_weights(self, weight_dir, net_name):
-        pass
-        '''
         if not os.path.exists(weight_dir):
             os.makedirs(weight_dir)
-
         if net_name == 'full':
-            print('Saving full network weights ...')
-            for name in self.full_w:
-                save_pkl(self.full_w[name].eval(), os.path.join(weight_dir, "full_%s.pkl" % name))
+            # print('Saving full network weights ...')
+            torch.save(self.full_q.state_dict(),os.path.join(weight_dir, "full_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
 
         elif net_name == 'beta':
-            print('Saving beta network weights ...')
-            for name in self.beta_w:
-                save_pkl(self.beta_w[name].eval(), os.path.join(weight_dir, "beta_%s.pkl" % name))
+            # print('Saving beta network weights ...')
+            torch.save(self.beta_q.state_dict(),os.path.join(weight_dir, "beta_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
 
         elif net_name == 'alpha':
-            print('Saving alpha network weights ...')
-            for name in self.alpha_w:
-                save_pkl(self.alpha_w[name].eval(), os.path.join(weight_dir, "alpha_%s.pkl" % name))
+            # print('Saving alpha network weights ...')
+            torch.save(self.alpha_q.state_dict(),os.path.join(weight_dir, "alpha_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
 
         else:
             if self.preset_lambda:
-                print('Saving frl preset_lambda network weights ...')
-                for name in self.beta_w:
-                    save_pkl(self.beta_w[name].eval(), os.path.join(weight_dir, "beta_%s.pkl" % name))
-                
-                for name in self.alpha_w:
-                    save_pkl(self.alpha_w[name].eval(), os.path.join(weight_dir, "alpha_%s.pkl" % name))  
+                # print('Saving frl preset_lambda network weights ...')
+                torch.save(self.alpha_q.state_dict(),os.path.join(weight_dir, "alpha_q_l_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
+                torch.save(self.beta_q.state_dict(),os.path.join(weight_dir, "beta_q_l_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
             else:
-                print('Saving frl mlp network weights ...')
-                for name in self.frl_w:
-                    save_pkl(self.frl_w[name].eval(), os.path.join(weight_dir, "frl_%s.pkl" % name))
-        '''
+                # print('Saving frl mlp network weights ...')
+                torch.save(self.frl_q.state_dict(),os.path.join(weight_dir, "frl_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
+                torch.save(self.alpha_q.state_dict(),os.path.join(weight_dir, "alpha_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
+                torch.save(self.beta_q.state_dict(),os.path.join(weight_dir, "beta_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
 
 
     def load_weights(self, weight_dir):
-        pass
-        '''
         print('Loading weights from %s ...' % weight_dir)
         if self.args.train_mode == 'full':
-            self.full_w_input, self.full_w_assign_op = self.update_q_network_op(self.full_w, 'load_full_pred_from_pkl')
-            for name in self.full_w:
-                self.full_w_assign_op[name].eval({self.full_w_input[name]: load_pkl(os.path.join(weight_dir, "full_%s.pkl" % name))})
+            path = "full_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            if os.path.exists(os.path.join(weight_dir, path)):
+                self.full_q.load_state_dict(torch.load(os.path.join(weight_dir, path)))
 
         elif self.args.train_mode == 'frl_separate':
-            self.frl_t_w_input, self.frl_w_assign_op = self.update_q_network_op(self.frl_w, 'load_frl_pred_from_pkl')
-            for name in self.frl_w:
-                self.frl_w_assign_op[name].eval({self.frl_t_w_input[name]: load_pkl(os.path.join(weight_dir, 'frl_%s.pkl' % name))})
-        
-        else:
-            self.beta_w_input, self.beta_w_assign_op = self.update_q_network_op(self.beta_w, 'load_beta_pred_from_pkl')
-            for name in self.beta_w:
-                self.beta_w_assign_op[name].eval({self.beta_w_input[name]: load_pkl(os.path.join(weight_dir, "beta_%s.pkl" % name))})
-
-            self.alpha_w_input, self.alpha_w_assign_op = self.update_q_network_op(self.alpha_w, 'load_alpha_pred_from_pkl')
-            for name in self.alpha_w:
-                self.alpha_w_assign_op[name].eval({self.alpha_w_input[name]: load_pkl(os.path.join(weight_dir, "alpha_%s.pkl" % name))})
+            path = "frl_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            path2 = "alpha_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            path3 = "beta_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            if os.path.exists(os.path.join(weight_dir, path)):
+                self.frl_q.load_state_dict(torch.load(os.path.join(weight_dir, path)))
+            if os.path.exists(os.path.join(weight_dir, path2)):
+                self.alpha_q.load_state_dict(torch.load(os.path.join(weight_dir, path2)))
+            if os.path.exists(os.path.join(weight_dir, path3)):
+                self.beta_q.load_state_dict(torch.load(os.path.join(weight_dir, path3)))
+        elif self.args.train_mode == 'single_alpha':
+            path = "alpha_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            if os.path.exists(os.path.join(weight_dir, path)):
+                self.alpha_q.load_state_dict(torch.load(os.path.join(weight_dir, path)))
+        elif self.args.train_mode == 'single_beta':
+            path = "beta_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            if os.path.exists(os.path.join(weight_dir, path)):
+                self.beta_q.load_state_dict(torch.load(os.path.join(weight_dir, path)))
+        else: # frl_lambda
+            path1 = "alpha_q_l_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            path2 = "beta_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            if os.path.exists(os.path.join(weight_dir, path1)):
+                self.alpha_q.load_state_dict(torch.load(os.path.join(weight_dir, path1)))
+            if os.path.exists(os.path.join(weight_dir, path2)):
+                self.beta_q.load_state_dict(torch.load(os.path.join(weight_dir, path2)))
 
         self.update_target_network()
-        '''
 

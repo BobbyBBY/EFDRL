@@ -86,7 +86,6 @@ class ReplayMemory(object):
                         count_neg += 1
                 break
             
-            # 因为 python3 中取消了 range 函数，而把 xrange 函数重命名为 range
             for i in range(1, self.hist_len + 1):
                 if self.terminals[index - i]: # only the last state of the history can be terminal
                     break

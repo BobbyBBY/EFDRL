@@ -15,7 +15,7 @@ def args_init_static():
     parser = argparse.ArgumentParser()
 
     envarg = parser.add_argument_group('Environment')
-    envarg.add_argument("--image_dim",              type=int,       default=8,    help="")#############
+    envarg.add_argument("--image_dim",              type=int,       default=8,    help="")
     envarg.add_argument("--state_dim",              type=int,       default=3,     help="")
     envarg.add_argument("--hist_len",               type=int,       default=2,    help="")
     envarg.add_argument("--max_steps",              type=int,       default=2,     help="")
@@ -63,8 +63,8 @@ def args_init_static():
     mainarg.add_argument("--start_epoch",       type=int,       default=0,          help="")
     mainarg.add_argument("--stop_epoch_gap",    type=int,       default=10,         help="")
     mainarg.add_argument("--success_base",      type=int,       default=-1,         help="")
-    mainarg.add_argument("--load_weights",      type=str2bool,  default=False,      help="")
-    mainarg.add_argument("--save_weights",      type=str2bool,  default=False,       help="")
+    mainarg.add_argument("--load_weights",      type=str2bool,  default=True,      help="")
+    mainarg.add_argument("--save_weights",      type=str2bool,  default=True,       help="")
     mainarg.add_argument("--predict_net",       type=str,       default='alpha',     help="")
     mainarg.add_argument("--result_dir",        type=str,       default='',     help="") #
     mainarg.add_argument("--result_dir_mark",   type=str,       default='20200407',     help="") #
@@ -83,9 +83,9 @@ def args_init_dynamic(args):
     if args.load_weights:
         args.exploration_rate_start = args.exploration_rate_end
     if args.train_mode =='frl_lambda':
-        args.present_lambda = True
+        args.preset_lambda = True
     else:
-        args.present_lambda = False
+        args.preset_lambda = False
     if args.autolen:
         lens = {8: 2, 16: 4, 32 :8, 64: 16}
         args.hist_len = lens[args.image_dim] 
@@ -131,7 +131,7 @@ def train_single_net(args):
         outfile.write('\n')
 
         if args.load_weights:
-            filename = 'weights/%s_%s.h5' % (args.train_mode, args.predict_net)
+            filename = 'weights/%s_%s' % (args.train_mode, args.predict_net)
             net.load_weights(filename)
 
         try:
@@ -153,9 +153,10 @@ def train_single_net(args):
                     # outfile.write('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
 
                     if args.save_weights:
-                        filename = 'weights/%s_%s.h5' % (args.train_mode, args.predict_net)
+                        filename = 'weights/%s_%s' % (args.train_mode, args.predict_net)
                         net.save_weights(filename, args.predict_net)
                         print('Saved weights %s ...\n' % filename)
+                # if True:
                 if epoch - best_result['valid']['log_epoch'] >= args.stop_epoch_gap:
                     # print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
                     break
@@ -204,6 +205,7 @@ def train_multi_nets(args):
     }
 
     # loop over epochs
+    print(args.result_dir)
     with open(args.result_dir, 'w') as outfile:
         # print('\n Arguments:')
         outfile.write('\n Arguments:\n')
@@ -214,7 +216,7 @@ def train_multi_nets(args):
         outfile.write('\n')
 
         if args.load_weights:
-            filename = 'weights/%s_both.h5' % args.train_mode
+            filename = 'weights/%s_both' % args.train_mode
             net.load_weights(filename)
 
         try:
@@ -227,12 +229,12 @@ def train_multi_nets(args):
 
                 if rate[args.success_base] > best_result['valid']['both']['success_rate'][args.success_base]:
                     update_best(best_result, 'valid', epoch, rate, reward, diff, 'both')
-                    print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
+                    # print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
                     # outfile.write('[both] \t best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(epoch, rate, reward, diff))
 
                     rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, 'both', 'test')
                     update_best(best_result, 'test', epoch, rate, reward, diff, 'both')
-                    print('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
+                    # print('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
                     # outfile.write('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(rate, reward, diff))
 
                     if args.test_multi_nets:
@@ -250,13 +252,14 @@ def train_multi_nets(args):
 
 
                     if args.save_weights:
-                        filename = 'weights/%s_both.h5' % args.train_mode
+                        filename = 'weights/%s_both' % args.train_mode
                         net.save_weights(filename, 'both')
-                        print('Saved weights %s ...\n' % filename)
+                        # print('Saved weights %s ...\n' % filename)
 
                     outfile.write('\n')
+                # if True:
                 if epoch - best_result['valid']['both']['log_epoch'] >= args.stop_epoch_gap:
-                    print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
+                    # print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
                     break
 
         except KeyboardInterrupt:
@@ -303,7 +306,7 @@ if __name__ == '__main__':
     args = args_init_static()
     train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate']
     predict_net_list = ['alpha', 'beta', 'full', 'both', 'both']
-    image_dim_list = [8,16,32]
+    image_dim_list = [8,16,32,64]
     for j in range(3):
         for i in range(5):
             cpu_or_gpu(args)
