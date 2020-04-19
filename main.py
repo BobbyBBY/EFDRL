@@ -44,8 +44,8 @@ def args_init_static():
     netarg.add_argument("--gamma",              type=float,     default=0.9,    help="")
     netarg.add_argument("--lambda_",            type=float,     default=0.5,    help="")
     netarg.add_argument("--preset_lambda",      type=str2bool,  default=False,  help="")
-    netarg.add_argument("--add_train_noise",    type=str2bool,  default=False,   help="")
-    netarg.add_argument("--add_predict_noise",  type=str2bool,  default=False,   help="")
+    netarg.add_argument("--add_train_noise",    type=str2bool,  default=True,   help="")
+    netarg.add_argument("--add_predict_noise",  type=str2bool,  default=True,   help="")
     netarg.add_argument("--noise_prob",         type=float,     default=0.5,    help="")
     netarg.add_argument("--stddev",             type=float,     default=1.0,    help="")
 
@@ -67,7 +67,7 @@ def args_init_static():
     mainarg.add_argument("--save_weights",      type=str2bool,  default=True,       help="")
     mainarg.add_argument("--predict_net",       type=str,       default='alpha',     help="")
     mainarg.add_argument("--result_dir",        type=str,       default='',     help="") #
-    mainarg.add_argument("--result_dir_mark",   type=str,       default='20200407',     help="") #
+    mainarg.add_argument("--result_dir_mark",   type=str,       default='noise',     help="") #
     mainarg.add_argument("--train_mode",        type=str,       default='single_alpha',     help='')
     mainarg.add_argument("--train_episodes",    type=int,       default=100,        help="") #
     mainarg.add_argument("--valid_episodes",    type=int,       default=800,        help="") #
@@ -307,8 +307,10 @@ if __name__ == '__main__':
     train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate']
     predict_net_list = ['alpha', 'beta', 'full', 'both', 'both']
     image_dim_list = [8,16,32,64]
-    for j in range(3):
-        for i in range(5):
+    for j in range(1):
+        for i in range(1):
+            i=4
+            j=0
             cpu_or_gpu(args)
             args.train_mode = train_mode_list[i]
             args.predict_net = predict_net_list[i]

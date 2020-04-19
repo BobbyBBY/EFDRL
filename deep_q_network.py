@@ -111,13 +111,13 @@ class FRLDQN(object):
                 tempQ_yi_beta = self.beta_q.forward(pre_states_beta)
                 if self.add_train_noise and np.random.rand() <= self.noise_prob:
                     # add Gaussian noise to Q-values with self.noise_prob probility 
-                    noise_alpha = np.random.normal(0.0, self.stddev, targets_alpha.shape)
-                    noise_beta = np.random.normal(0.0, self.stddev, targets_beta.shape)
+                    noise_alpha = torch.normal(0.0, self.stddev, targets_alpha.shape).to(self.device)
+                    noise_beta = torch.normal(0.0, self.stddev, targets_beta.shape).to(self.device)
                     targets_alpha += noise_alpha
                     targets_beta += noise_beta
 
-                    noise_alpha = np.random.normal(0.0, self.stddev, tempQ_yi_alpha.shape)
-                    noise_beta = np.random.normal(0.0, self.stddev, tempQ_yi_beta.shape)
+                    noise_alpha = torch.normal(0.0, self.stddev, tempQ_yi_alpha.shape).to(self.device)
+                    noise_beta = torch.normal(0.0, self.stddev, tempQ_yi_beta.shape).to(self.device)
                     tempQ_yi_alpha += noise_alpha
                     tempQ_yi_beta += noise_beta
                 targets = self.frl_t_q.forward(targets_alpha, targets_beta)
@@ -194,8 +194,8 @@ class FRLDQN(object):
                 qvalue = self.lambda_ * q_alpha + (1 - self.lambda_) * q_beta
             else:
                 if self.add_predict_noise:
-                    noise_alpha = np.random.normal(0.0, self.stddev, q_alpha.shape)
-                    noise_beta = np.random.normal(0.0, self.stddev, q_beta.shape)
+                    noise_alpha = torch.normal(0.0, self.stddev, q_alpha.shape).to(self.device)
+                    noise_beta = torch.normal(0.0, self.stddev, q_beta.shape).to(self.device)
                     q_alpha += noise_alpha
                     q_beta += noise_beta
                 qvalue = self.frl_q.forward(q_alpha, q_beta)
