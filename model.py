@@ -14,7 +14,7 @@ class DQN_single(nn.Module):
             nn.Linear(32*state_dim*state_dim, 256),
             nn.ReLU()
         )
-        self.f2 =  nn.Linear(256, action_length)
+        self.f2 = nn.Linear(256, action_length)
 
     def forward(self, x):
         x = self.c1(x)
@@ -63,5 +63,3 @@ class MLP(nn.Module):
         x = torch.cat((alpha, beta),1)
         x = self.f1(x)
         return self.f2(x)
-
-# FCN

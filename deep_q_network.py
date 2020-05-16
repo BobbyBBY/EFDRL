@@ -55,6 +55,41 @@ class FRLDQN(object):
     def Square_loss(self, x, y):
         return torch.mean(torch.pow((x - y), 2))
 
+    #独占式FRL中的g(x)
+    def g(self,qvalue):
+        qvalue[0]+=1
+        qvalue[1]+=3
+        qvalue[3]+=5
+        qvalue[4]+=2
+        qvalue[7]+=4
+        qvalue[9]+=2
+        qvalue[13]+=2
+        qvalue[14]+=1
+        #3\7,2\5,11\13对换,类似s盒
+        #之后再尝试3=3+7之类的
+        #每次轮换位置呢？即训练一次，3\7变成2\6,然后循环
+        # self.swap(qvalue,3,7)
+        # self.swap(qvalue,5,11)
+        return qvalue
+        pass
+    def g_(self,qvalue):
+        # self.swap(qvalue,3,7)
+        # self.swap(qvalue,5,11)
+        qvalue[0]-=1
+        qvalue[1]-=3
+        qvalue[3]-=5
+        qvalue[4]-=2
+        qvalue[7]-=4
+        qvalue[9]-=2
+        qvalue[13]-=2
+        qvalue[14]-=1
+        return qvalue
+    def swap(self,qvalue,i,j):
+        qvalue[i]+=qvalue[j]
+        qvalue[j]=qvalue[i]-qvalue[j]
+        qvalue[i]-=qvalue[j]
+        pass
+
     def update_target_network(self):
         if self.args.train_mode == 'single_alpha':
             self.alpha_t_q=copy.deepcopy(self.alpha_q)
@@ -105,10 +140,16 @@ class FRLDQN(object):
                 tempQ_yi = self.lambda_ * tempQ_yi_alpha + (1 - self.lambda_) * tempQ_yi_beta
                 tempQ = tempQ_yi.clone()
             else:
+                
                 targets_alpha = self.alpha_t_q.forward(post_states_alpha)
                 targets_beta = self.beta_t_q.forward(post_states_beta)
                 tempQ_yi_alpha = self.alpha_q.forward(pre_states_alpha)
                 tempQ_yi_beta = self.beta_q.forward(pre_states_beta)
+                if self.args.exclusive:
+                    #是否使用独占式
+                    targets_alpha = self.g(targets_alpha)
+                    tempQ_yi_alpha = self.g(tempQ_yi_alpha)
+                    pass
                 if self.add_train_noise and np.random.rand() <= self.noise_prob:
                     # add Gaussian noise to Q-values with self.noise_prob probility 
                     noise_alpha = torch.normal(0.0, self.stddev, targets_alpha.shape).to(self.device)
@@ -124,6 +165,7 @@ class FRLDQN(object):
                 max_postq = torch.max(targets,1)[0]
                 tempQ_yi = self.frl_q.forward(tempQ_yi_alpha, tempQ_yi_beta)
                 tempQ = tempQ_yi.clone()
+
 
         for i, action in enumerate(actions):
             if terminals[i]:
@@ -159,7 +201,7 @@ class FRLDQN(object):
             self.optimizer_dqn_beta.step()
 
         elif self.args.train_mode == 'frl_separate':
-            # 这里不确定梯度知否会顺着mlp传到dqn a,b网络
+            # （原）这里不确定梯度知否会顺着mlp传到dqn a,b网络,实验结果表示现逻辑正确
             loss = self.criterion(tempQ, tempQ_yi)
             self.optimizer_dqn_alpha.zero_grad()
             self.optimizer_dqn_beta.zero_grad()
@@ -190,6 +232,11 @@ class FRLDQN(object):
         elif predict_net == 'both':
             q_alpha = self.alpha_q.forward(torch.Tensor(state_alpha).to(self.device))
             q_beta = self.beta_q.forward(torch.Tensor(state_beta).to(self.device))
+            if self.args.exclusive:
+                #是否使用独占式
+                q_alpha[0] = self.g(q_alpha[0])
+                q_beta[0] = self.g(q_beta[0])
+                pass
             if self.preset_lambda:
                 qvalue = self.lambda_ * q_alpha + (1 - self.lambda_) * q_beta
             else:
