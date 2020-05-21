@@ -53,13 +53,17 @@ class DQN_full(nn.Module):
 class MLP(nn.Module):
     def __init__(self, action_length):
         super(MLP, self).__init__()
+        # 独占式g(x)需要非relu linear模拟
+        # self.f_exc = nn.Linear(action_length, action_length)
         self.f1 = nn.Sequential(
             nn.Linear(2*action_length, 2*action_length),
             nn.ReLU()
         )
+        # self.f1 = nn.Linear(2*action_length, 2*action_length)
         self.f2 =  nn.Linear(2*action_length, action_length)
 
     def forward(self, alpha, beta):
+        # x_a = self.f_exc(alpha)
         x = torch.cat((alpha, beta),1)
         x = self.f1(x)
         return self.f2(x)

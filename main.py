@@ -308,13 +308,14 @@ if __name__ == '__main__':
     train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate']
     predict_net_list = ['alpha', 'beta', 'full', 'both', 'both']
     image_dim_list = [8,16,32,64]
-    i=0
+    i=4
     args.add_train_noise = False
     args.add_predict_noise = False
-    args.exclusive = False
-    args.result_dir_mark = "FRL_alpha_test"
+    # args.exclusive = False
+    args.exclusive = True
+    args.result_dir_mark = "exc_newg_2"
     for j in range(1):
-        j=1
+        j=0
         cpu_or_gpu(args)
         args.train_mode = train_mode_list[i]
         args.predict_net = predict_net_list[i]

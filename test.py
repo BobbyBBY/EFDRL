@@ -3,15 +3,18 @@ import torch
 import torch.nn as nn
 import conv
 import torch.optim as optim
+import numpy as np
+from scipy import *
+from math import log
 
 class DQN_single(nn.Module):
     def __init__(self):
         super(DQN_single, self).__init__()
-        # self.f1 = nn.Sequential(
-        #     nn.Linear(4, 4),
-        #     nn.ReLU()
-        # )
-        self.f3 = nn.Linear(4, 4)
+        self.f3 = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.ReLU()
+        )
+        # self.f3 = nn.Linear(4, 4)
 
     def forward(self, x):
         # x = self.f1(x)
@@ -20,7 +23,7 @@ class DQN_single(nn.Module):
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
-        # self.f1 = nn.Sequential(
+        # self.f2 = nn.Sequential(
         #     nn.Linear(4,4),
         #     nn.ReLU()
         # )
@@ -66,6 +69,11 @@ else:
     device = torch.device("cpu")
     print("CUDA is not available, fall back to CPU.")
 
+
+def asymmetricKL(P,Q):
+    return sum(P * log(P / Q)) #calculate the kl divergence between P and Q
+ 
+
 net = DQN_single().to(device)
 net2 = DQN_single2().to(device)
 mlp = MLP().to(device)
@@ -77,31 +85,33 @@ num=0
 while True:
     num += 1
     x = torch.rand(1, 4)[0].to(device)
-    # x2 = copy.deepcopy(x)
+    x2 = x.clone().detach()
     x *= 15
     # print(x)
-    # result = [x[0]+5,x[1]+10,x[2]+15,x[3]+20]
-    # result2 = [x[0]+5,x[1]+10,x[2]+15,x[3]+20]
-    result = [x[3],x[2],x[1],x[0]]
+    result = [x[0]+5,x[2]+10,x[1]+15,x[3]+20]
+    # result2 = [x[0]+5,x[2]+10,x[1]+15,x[3]+20]
+    # result = [x[3],x[2],x[1],x[0]]
     # result2 = [x[3],x[2],x[1],x[0]]
     result = torch.Tensor(result).to(device)
     # result2 = torch.Tensor(result2).to(device)
-    targets = net.forward(x)
-    # swap(targets1,0,3)
+    targets1 = net.forward(x)
+    targets1[2]+=15
+    targets1[3]+=15
+    swap(targets1,0,2)
     # swap(targets1,1,2)
-    # targets = mlp.forward(targets1)
+    targets = mlp.forward(targets1)
     # targets2 = net2.forward(x2)
     loss = criterion(result, targets)
     # loss2 = criterion(result2, targets2)
     optimizer1.zero_grad()
-    # optimizer2.zero_grad()
+    optimizer2.zero_grad()
     loss.backward()
     optimizer1.step()
-    # optimizer2.step()
+    optimizer2.step()
     # optimizer3.zero_grad()
     # loss2.backward()
     # optimizer3.step()
-    if num%200==199 :
+    if num%50==49 :
         num=0
         print("---------------------------------------------------")
         print(x.cpu().detach().numpy())
@@ -109,6 +119,9 @@ while True:
         print(targets.cpu().detach().numpy())
         print(result.cpu().detach().numpy())
         print(result.cpu().detach().numpy()-targets.cpu().detach().numpy())
+        # print(loss2.item())
+        # print(result2.cpu().detach().numpy()-targets2.cpu().detach().numpy())
         # print("\n")
+        print(asymmetricKL(result.cpu().detach().numpy(),targets.cpu().detach().numpy()))
         
         print("\n")
