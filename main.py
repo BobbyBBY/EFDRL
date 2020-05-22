@@ -228,6 +228,11 @@ def train_multi_nets(args):
                 rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, 'both', 'valid')
                 epoch_end_time = time.perf_counter()
                 print("epoch train + valid", epoch_end_time-epoch_start_time)
+                # print("\n")
+                # print("total:%d"%net.total)
+                # print("same:%d"%net.same)
+                # print("samea:%d"%net.samea)
+                # print("sameb:%d"%net.sameb)
 
                 if rate[args.success_base] > best_result['valid']['both']['success_rate'][args.success_base]:
                     update_best(best_result, 'valid', epoch, rate, reward, diff, 'both')
@@ -287,6 +292,100 @@ def train_multi_nets(args):
     print('Total time cost: %ds\n' % (end - start))
 
 
+def test_multi_nets(args):
+    start = time.time()
+    print('Current time is: %s' % get_time())
+    print('Starting at train_multi_nets...')
+
+    # Initial environment, replay memory, deep_q_net and agent
+    env = Environment(args)
+    mem = ReplayMemory(args)
+    net = FRLDQN(args)
+    agent = Agent(env, mem, net, args)
+
+    # 不知道为什么没有输出alpha
+    best_result = {'valid': {'alpha': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
+                                'beta': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
+                                'both': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}},
+
+                    'test': {'alpha': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
+                                'beta': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1},
+                                'both': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}}   
+    }
+
+    # loop over epochs
+    print(args.result_dir)
+    with open(args.result_dir, 'w') as outfile:
+        # print('\n Arguments:')
+        outfile.write('\n Arguments:\n')
+        for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
+            # print('{}: {}'.format(k, v))
+            outfile.write('{}: {}\n'.format(k, v))
+        # print('\n')
+        outfile.write('\n')
+
+        if args.load_weights:
+            filename = 'weights/%s_both' % args.train_mode
+            net.load_weights(filename)
+
+        try:
+            for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
+                epoch_start_time = time.perf_counter()
+                # agent.train(epoch, args.train_episodes, outfile, args.predict_net)
+                rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'valid')
+                epoch_end_time = time.perf_counter()
+                print("epoch train + valid", epoch_end_time-epoch_start_time)
+
+                if rate[args.success_base] > best_result['valid'][args.predict_net]['success_rate'][args.success_base] :
+                    update_best(best_result, 'valid', epoch, rate, reward, diff, args.predict_net)
+                    print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
+                    # outfile.write('[both] \t best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(epoch, rate, reward, diff))
+
+                    rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'test')
+                    update_best(best_result, 'test', epoch, rate, reward, diff, args.predict_net)
+                    print('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
+                    # outfile.write('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(rate, reward, diff))
+
+                    if args.test_multi_nets:
+                    #for net_name in ['alpha', 'beta']:
+                        net_name = 'beta'
+                        rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, net_name, 'valid')
+                        update_best(best_result, 'valid', epoch, rate, reward, diff, net_name)
+                        print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
+                        # outfile.write('[{}] \t best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(net_name, epoch, rate, reward, diff))
+
+                        rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, net_name, 'test')
+                        update_best(best_result, 'test', epoch, rate, reward, diff, net_name)
+                        print('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
+                        # outfile.write('\n Test results:\t success_rate: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(rate, reward, diff))
+
+          
+                if args.early_stop and (epoch - best_result['valid'][args.predict_net]['log_epoch'] >= args.stop_epoch_gap):
+                    print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
+                    break
+
+        except KeyboardInterrupt:
+            print('\n Manually kill the program ... \n')
+
+        print('\n\n',args.train_mode)
+        print('Best results:')
+        outfile.write('\n\n{}\n'.format(args.train_mode))
+        outfile.write('Best results:\n')
+        for data_flag, results in best_result.items():
+            print('\t{}'.format(data_flag))
+            outfile.write('\t{}\n'.format(data_flag))
+            for net_name, result in results.items():
+                print('\t\t{}'.format(net_name))
+                outfile.write('\t\t{}\n'.format(net_name))
+                for k, v in result.items():
+                    print('\t\t\t{}: {}'.format(k, v))
+                    outfile.write('\t\t\t{}: {}\n'.format(k, v))
+        end = time.time()
+        outfile.write('\nTotal time cost: %ds\n' % (end - start))
+
+
+    print('Current time is: %s' % get_time())
+    print('Total time cost: %ds\n' % (end - start))
 
 def update_best(result, data_flag, epoch, rate, reward, diff, net_name=''):
     if net_name:
@@ -304,16 +403,18 @@ def update_best(result, data_flag, epoch, rate, reward, diff, net_name=''):
 
 
 if __name__ == '__main__':
+    # only_test  = True
+    only_test  = False
     args = args_init_static()
-    train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate']
-    predict_net_list = ['alpha', 'beta', 'full', 'both', 'both']
+    train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate','frl_exc']
+    predict_net_list = ['alpha', 'beta', 'full', 'both', 'both','exc']
     image_dim_list = [8,16,32,64]
     i=4
     args.add_train_noise = False
     args.add_predict_noise = False
     # args.exclusive = False
     args.exclusive = True
-    args.result_dir_mark = "exc_newg_2"
+    args.result_dir_mark = "newexc_1"
     for j in range(1):
         j=0
         cpu_or_gpu(args)
@@ -321,9 +422,13 @@ if __name__ == '__main__':
         args.predict_net = predict_net_list[i]
         args.image_dim = image_dim_list[j]
         args_init_dynamic(args)
-        if args.train_mode in ['full', 'single_alpha', 'single_beta']:
-            train_single_net(args)
+        if only_test:
+            args.predict_net = predict_net_list[3]
+            test_multi_nets(args)
         else:
-            train_multi_nets(args)
+            if args.train_mode in ['full', 'single_alpha', 'single_beta']:
+                train_single_net(args)
+            else:
+                train_multi_nets(args)
     input()
 

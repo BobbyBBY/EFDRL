@@ -53,7 +53,7 @@ class DQN_full(nn.Module):
 class MLP(nn.Module):
     def __init__(self, action_length):
         super(MLP, self).__init__()
-        # 独占式g(x)需要非relu linear模拟
+        # 独占式g(x)需要非relu linear模拟（这句话未论证）
         # self.f_exc = nn.Linear(action_length, action_length)
         self.f1 = nn.Sequential(
             nn.Linear(2*action_length, 2*action_length),

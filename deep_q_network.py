@@ -28,6 +28,10 @@ class FRLDQN(object):
         # self.criterion = self.Square_loss
         self.build_dqn()
         self.exc_p()
+        self.same = 0
+        self.total = 0
+        self.samea = 0
+        self.sameb = 0
 
    
     def build_dqn(self):
@@ -58,10 +62,10 @@ class FRLDQN(object):
 
     # 准备独占式gx需要的张量
     def exc_p(self):
-        change =  [-1,2,30,-2,4 ,0.1,0,0,-4,3 ,10,50,1,5,1 ,-10]
+        change =  [-1,2,3,-2,4 ,0.1,0,0,-4,3 ,1,5,1,5,1 ,-1]
         change = torch.Tensor(change)
-        self.change_train = change.expand(32, 16)
-        self.change_predict = change.expand(1, 16)
+        self.change_train = change.expand(32, 16).to(self.device)
+        self.change_predict = change.expand(1, 16).to(self.device)
 
     #独占式FRL中的g(x)
     def g_t(self,qvalue):
@@ -165,11 +169,22 @@ class FRLDQN(object):
                 targets = self.frl_t_q.forward(targets_alpha, targets_beta)
                 max_postq = torch.max(targets,1)[0]
                 tempQ_yi = self.frl_q.forward(tempQ_yi_alpha, tempQ_yi_beta)
-                # 因梯度反向传递，对调tempQ与tempQ_y
-                # tempQ = copy.deepcopy(tempQ_yi)
+                # max_postq_2 = torch.argmax(tempQ_yi,1)
+                # self.total += 16
+                # for i in range(16):
+                #     if max_postq_2[i] == actions[i]:
+                #         self.same += 1
+                #     if max_postq_2[i]%4 == actions[i]%4:
+                #         self.sameb += 1
+                #     if max_postq_2[i]/4 == actions[i]/4:
+                #         self.samea += 1  
+                # print("\n")
+                # print("total:%d"%self.total)
+                # print("same:%d"%self.same)
+                # 因梯度反向传递，对调tempQ与tempQ_y，原来下面反了
                 tempQ = tempQ_yi.clone().detach()
 
-        # 因梯度反向传递，对调tempQ与tempQ_y
+        # 因梯度反向传递，对调tempQ与tempQ_y，原来这里反了
         for i, action in enumerate(actions):
             if terminals[i]:
                 tempQ[i][action] = rewards[i]
@@ -228,6 +243,7 @@ class FRLDQN(object):
 
         elif predict_net == 'beta':
             qvalue = self.beta_q.forward(torch.Tensor(state_beta).to(self.device))
+            qvalue = self.g_p(qvalue)
         
         elif predict_net == 'full':
             qvalue = self.full_q.forward(torch.Tensor(state_alpha).to(self.device), torch.Tensor(state_beta).to(self.device))
