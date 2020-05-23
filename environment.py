@@ -98,8 +98,10 @@ class Environment(object):
 
     def act(self, action, steps):
         act_a, act_b = divmod(action, 4)
-        new_a_xy = self.a_xy + self.move[act_a]
+        # new_a_xy = self.a_xy + self.move[act_a]
+        new_a_xy = self.a_xy
         new_b_xy = self.b_xy + self.move[act_b]
+        # new_b_xy = self.b_xy
 
         if self.is_valid_pos(new_a_xy) and self.state[new_a_xy[0], new_a_xy[1]] != 0:
             # not in the border and not obstacle

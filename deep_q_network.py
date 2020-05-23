@@ -243,7 +243,6 @@ class FRLDQN(object):
 
         elif predict_net == 'beta':
             qvalue = self.beta_q.forward(torch.Tensor(state_beta).to(self.device))
-            qvalue = self.g_p(qvalue)
         
         elif predict_net == 'full':
             qvalue = self.full_q.forward(torch.Tensor(state_alpha).to(self.device), torch.Tensor(state_beta).to(self.device))
@@ -254,7 +253,6 @@ class FRLDQN(object):
             if self.args.exclusive:
                 #是否使用独占式
                 q_alpha = self.g_p(q_alpha)
-                q_beta = self.g_p(q_beta)
                 pass
             if self.preset_lambda:
                 qvalue = self.lambda_ * q_alpha + (1 - self.lambda_) * q_beta

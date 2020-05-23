@@ -62,7 +62,7 @@ def args_init_static():
     mainarg.add_argument("--gpu_fraction",      type=float,     default=0.2,        help="")
     mainarg.add_argument("--epochs",            type=int,       default=200,        help="")
     mainarg.add_argument("--start_epoch",       type=int,       default=0,          help="")
-    mainarg.add_argument("--stop_epoch_gap",    type=int,       default=10,         help="")
+    mainarg.add_argument("--stop_epoch_gap",    type=int,       default=20,         help="")
     mainarg.add_argument("--success_base",      type=int,       default=-1,         help="")
     mainarg.add_argument("--load_weights",      type=str2bool,  default=True,      help="")
     mainarg.add_argument("--save_weights",      type=str2bool,  default=True,       help="")
@@ -74,7 +74,7 @@ def args_init_static():
     mainarg.add_argument("--valid_episodes",    type=int,       default=800,        help="") #
     mainarg.add_argument("--test_episodes",     type=int,       default=800,        help="") #
     mainarg.add_argument("--test_multi_nets",   type=str2bool,  default=False,      help="") #
-    mainarg.add_argument("--early_stop",        type=str2bool,  default=False,      help="") #
+    mainarg.add_argument("--early_stop",        type=str2bool,  default=True,      help="") #
     mainarg.add_argument("--device_type",       type=torch.device,     default=torch.device("cpu"),    help="")
 
 
@@ -409,12 +409,12 @@ if __name__ == '__main__':
     train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate','frl_exc']
     predict_net_list = ['alpha', 'beta', 'full', 'both', 'both','exc']
     image_dim_list = [8,16,32,64]
-    i=4
+    i=1
     args.add_train_noise = False
     args.add_predict_noise = False
-    # args.exclusive = False
-    args.exclusive = True
-    args.result_dir_mark = "newexc_1"
+    args.exclusive = False
+    # args.exclusive = True
+    args.result_dir_mark = "new_DQNb_test_1"
     for j in range(1):
         j=0
         cpu_or_gpu(args)
