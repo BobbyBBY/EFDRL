@@ -176,7 +176,7 @@ class FRLDQN(object):
                 #         self.same += 1
                 #     if max_postq_2[i]%4 == actions[i]%4:
                 #         self.sameb += 1
-                #     if max_postq_2[i]/4 == actions[i]/4:
+                #     if max_postq_2[i]//4 == actions[i]//4:
                 #         self.samea += 1  
                 # print("\n")
                 # print("total:%d"%self.total)
