@@ -56,6 +56,10 @@ class FRLDQN(object):
         self.frl_t_q = model.MLP(self.num_actions).to(self.device)
         self.optimizer_frl = optim.SGD(self.frl_q.parameters(), lr=self.learning_rate)
 
+        self.frl_q_2 = model.MLP(self.num_actions).to(self.device)
+        self.frl_t_q_2 = model.MLP(self.num_actions).to(self.device)
+        self.optimizer_frl_2 = optim.SGD(self.frl_q_2.parameters(), lr=self.learning_rate)
+
     # 损失函数，平方损失函数
     def Square_loss(self, x, y):
         return torch.mean(torch.pow((x - y), 2))
@@ -111,7 +115,10 @@ class FRLDQN(object):
                 self.beta_t_q=copy.deepcopy(self.beta_q)
 
             else:
+                self.alpha_t_q=copy.deepcopy(self.alpha_q)
+                self.beta_t_q=copy.deepcopy(self.beta_q)
                 self.frl_t_q=copy.deepcopy(self.frl_q)
+                self.frl_t_q_2=copy.deepcopy(self.frl_q_2)
 
 
     def train(self, minibatch):
@@ -150,11 +157,6 @@ class FRLDQN(object):
                 targets_beta = self.beta_t_q.forward(post_states_beta)
                 tempQ_yi_alpha = self.alpha_q.forward(pre_states_alpha)
                 tempQ_yi_beta = self.beta_q.forward(pre_states_beta)
-                if self.args.exclusive:
-                    #是否使用独占式
-                    targets_alpha = self.g_t(targets_alpha)
-                    tempQ_yi_alpha = self.g_t(tempQ_yi_alpha)
-                    pass
                 if self.add_train_noise and np.random.rand() <= self.noise_prob:
                     # add Gaussian noise to Q-values with self.noise_prob probility 
                     noise_alpha = torch.normal(0.0, self.stddev, targets_alpha.shape).to(self.device)
@@ -169,6 +171,28 @@ class FRLDQN(object):
                 targets = self.frl_t_q.forward(targets_alpha, targets_beta)
                 max_postq = torch.max(targets,1)[0]
                 tempQ_yi = self.frl_q.forward(tempQ_yi_alpha, tempQ_yi_beta)
+                tempQ = tempQ_yi.clone().detach()
+                for i, action in enumerate(actions):
+                    if terminals[i]:
+                        tempQ[i][action] = rewards[i]
+                    else:
+                        tempQ[i][action] = rewards[i] + self.gamma * max_postq[i]
+
+                if self.args.exclusive :
+                    #是否使用独占式
+                    targets_2 = self.frl_t_q_2.forward(targets_alpha, targets_beta)
+                    targets_2 = self.g_t(targets_2)
+                    max_postq_2 = torch.max(targets_2,1)[0]
+                    tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
+                    tempQ_yi_2 = self.g_t(tempQ_yi_2)
+                    tempQ2 = tempQ_yi_2.clone().detach()
+                    for i, action in enumerate(actions):
+                        if terminals[i]:
+                            tempQ_2[i][action] = rewards[i]
+                        else:
+                            tempQ_2[i][action] = rewards[i] + self.gamma * max_postq_2[i]
+                    pass
+
                 # max_postq_2 = torch.argmax(tempQ_yi,1)
                 # self.total += 16
                 # for i in range(16):
@@ -182,14 +206,11 @@ class FRLDQN(object):
                 # print("total:%d"%self.total)
                 # print("same:%d"%self.same)
                 # 因梯度反向传递，对调tempQ与tempQ_y，原来下面反了
-                tempQ = tempQ_yi.clone().detach()
+                
+
 
         # 因梯度反向传递，对调tempQ与tempQ_y，原来这里反了
-        for i, action in enumerate(actions):
-            if terminals[i]:
-                tempQ[i][action] = rewards[i]
-            else:
-                tempQ[i][action] = rewards[i] + self.gamma * max_postq[i]
+        
 
 
         if self.args.train_mode == 'single_alpha':  
@@ -228,6 +249,8 @@ class FRLDQN(object):
             self.optimizer_frl.step()
             self.optimizer_dqn_alpha.step()
             self.optimizer_dqn_beta.step()
+
+
 
         else: 
             print('\n Wrong training mode! \n')
