@@ -123,6 +123,10 @@ class FRLDQN(object):
 
     def train(self, minibatch):
         pre_states_alpha, pre_states_beta, actions, rewards, post_states_alpha, post_states_beta, terminals = minibatch
+        # actions2 = actionss.copy()
+        # actions2 //=16
+        # actions = actionss.copy()
+        # actions %=16
         
         if self.args.train_mode == 'single_alpha':
             targets = self.alpha_t_q.forward(post_states_alpha)
@@ -172,6 +176,7 @@ class FRLDQN(object):
                 max_postq = torch.max(targets,1)[0]
                 tempQ_yi = self.frl_q.forward(tempQ_yi_alpha, tempQ_yi_beta)
                 tempQ = tempQ_yi.clone().detach()
+                max_postq_2 = torch.argmax(tempQ_yi,1)
                 for i, action in enumerate(actions):
                     if terminals[i]:
                         tempQ[i][action] = rewards[i]
@@ -185,32 +190,16 @@ class FRLDQN(object):
                     max_postq_2 = torch.max(targets_2,1)[0]
                     tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
                     tempQ_yi_2 = self.g_t(tempQ_yi_2)
-                    tempQ2 = tempQ_yi_2.clone().detach()
-                    for i, action in enumerate(actions):
-                        if terminals[i]:
-                            tempQ_2[i][action] = rewards[i]
-                        else:
-                            tempQ_2[i][action] = rewards[i] + self.gamma * max_postq_2[i]
-                    pass
+                    tempQ_2 = tempQ.clone().detach()
+                else :
+                    #是否使用独占式
+                    targets_2 = self.frl_t_q_2.forward(targets_alpha, targets_beta)
+                    # targets_2 = self.g_t(targets_2)
+                    max_postq_2 = torch.max(targets_2,1)[0]
+                    tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
+                    # tempQ_yi_2 = self.g_t(tempQ_yi_2)
+                    tempQ_2 = tempQ.clone().detach()
 
-                # max_postq_2 = torch.argmax(tempQ_yi,1)
-                # self.total += 16
-                # for i in range(16):
-                #     if max_postq_2[i] == actions[i]:
-                #         self.same += 1
-                #     if max_postq_2[i]%4 == actions[i]%4:
-                #         self.sameb += 1
-                #     if max_postq_2[i]/4 == actions[i]/4:
-                #         self.samea += 1  
-                # print("\n")
-                # print("total:%d"%self.total)
-                # print("same:%d"%self.same)
-                # 因梯度反向传递，对调tempQ与tempQ_y，原来下面反了
-                
-
-
-        # 因梯度反向传递，对调tempQ与tempQ_y，原来这里反了
-        
 
 
         if self.args.train_mode == 'single_alpha':  
@@ -240,15 +229,19 @@ class FRLDQN(object):
             self.optimizer_dqn_beta.step()
 
         elif self.args.train_mode == 'frl_separate':
-            # （原）这里不确定梯度知否会顺着mlp传到dqn a,b网络,实验结果表示现逻辑正确
-            loss = self.criterion(tempQ, tempQ_yi)
-            self.optimizer_dqn_alpha.zero_grad()
-            self.optimizer_dqn_beta.zero_grad()
-            self.optimizer_frl.zero_grad()
-            loss.backward()
-            self.optimizer_frl.step()
-            self.optimizer_dqn_alpha.step()
-            self.optimizer_dqn_beta.step()
+                loss = self.criterion(tempQ, tempQ_yi)
+                self.optimizer_dqn_beta.zero_grad()
+                self.optimizer_frl.zero_grad()
+                loss.backward(retain_graph=True)
+                self.optimizer_frl.step()
+                self.optimizer_dqn_beta.step()
+                loss2 = self.criterion(tempQ_2, tempQ_yi_2)
+                self.optimizer_dqn_alpha.zero_grad()
+                self.optimizer_frl_2.zero_grad()
+                loss2.backward()
+                self.optimizer_frl_2.step()
+                self.optimizer_dqn_alpha.step()
+
 
 
 
@@ -273,10 +266,6 @@ class FRLDQN(object):
         elif predict_net == 'both':
             q_alpha = self.alpha_q.forward(torch.Tensor(state_alpha).to(self.device))
             q_beta = self.beta_q.forward(torch.Tensor(state_beta).to(self.device))
-            if self.args.exclusive:
-                #是否使用独占式
-                q_alpha = self.g_p(q_alpha)
-                pass
             if self.preset_lambda:
                 qvalue = self.lambda_ * q_alpha + (1 - self.lambda_) * q_beta
             else:
@@ -285,12 +274,16 @@ class FRLDQN(object):
                     noise_beta = torch.normal(0.0, self.stddev, q_beta.shape).to(self.device)
                     q_alpha += noise_alpha
                     q_beta += noise_beta
-                qvalue = self.frl_q.forward(q_alpha, q_beta)
+                if self.args.exclusive :
+                    qvalue = self.g_p(self.frl_q_2.forward(q_alpha, q_beta))
+                else :
+                     qvalue = self.frl_q.forward(q_alpha, q_beta)
+
         else:
             print('\n Wrong predict mode! \n')
             raise ValueError
 
-        return qvalue[0]
+        return qvalue
 
 
     def save_weights(self, weight_dir, net_name):
@@ -318,6 +311,7 @@ class FRLDQN(object):
                 torch.save(self.frl_q.state_dict(),os.path.join(weight_dir, "frl_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
                 torch.save(self.alpha_q.state_dict(),os.path.join(weight_dir, "alpha_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
                 torch.save(self.beta_q.state_dict(),os.path.join(weight_dir, "beta_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
+                torch.save(self.frl_q_2.state_dict(),os.path.join(weight_dir, "frl_q_2_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
 
 
     def load_weights(self, weight_dir):
@@ -331,12 +325,15 @@ class FRLDQN(object):
             path = "frl_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
             path2 = "alpha_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
             path3 = "beta_q_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
+            path4 = "frl_q_2_f_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
             if os.path.exists(os.path.join(weight_dir, path)):
                 self.frl_q.load_state_dict(torch.load(os.path.join(weight_dir, path)))
             if os.path.exists(os.path.join(weight_dir, path2)):
                 self.alpha_q.load_state_dict(torch.load(os.path.join(weight_dir, path2)))
             if os.path.exists(os.path.join(weight_dir, path3)):
                 self.beta_q.load_state_dict(torch.load(os.path.join(weight_dir, path3)))
+            if os.path.exists(os.path.join(weight_dir, path4)):
+                self.frl_q_2.load_state_dict(torch.load(os.path.join(weight_dir, path4)))
         elif self.args.train_mode == 'single_alpha':
             path = "alpha_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)
             if os.path.exists(os.path.join(weight_dir, path)):

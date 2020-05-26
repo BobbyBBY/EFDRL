@@ -41,10 +41,10 @@ class Agent(object):
             # otherwise choose action with highest Q-value
             state_alpha, state_beta = self.env.getState()
             qvalue = self.net.predict(state_alpha, state_beta, predict_net)
-            # qvalue2 = self.net.predict(state_alpha, state_beta, 'beta')
             action = torch.argmax(qvalue).item() # 这里应该调用net里的函数获得下标，降低耦合
-            # action2 = torch.argmax(qvalue2).item()
+            # action2 = torch.argmax(qvalue[1]).item()
             # action = (action//4)*4+action2%4
+            # action = action2*16+action
             
         # perform the action  
         self.steps += 1
