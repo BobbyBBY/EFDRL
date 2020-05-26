@@ -2,7 +2,6 @@
 import time
 import argparse
 import torch
-
 from agent import Agent
 from deep_q_network import FRLDQN
 from environment import Environment
@@ -23,8 +22,7 @@ def args_init_static():
     envarg.add_argument("--max_train_doms",         type=int,       default=6400,  help="")
     envarg.add_argument("--start_valid_dom",        type=int,       default=6400,  help="")
     envarg.add_argument("--start_test_dom",         type=int,       default=7200,  help="")
-    envarg.add_argument("--automax",                type=int,       default=2,     help="")
-    envarg.add_argument("--autolen",                type=int,       default=1,     help="")
+    envarg.add_argument("--max_steps",              type=int,       default=38,     help="")
     envarg.add_argument("--use_instant_distance",   type=int,       default=1,      help="")
     envarg.add_argument("--step_reward",            type=float,     default=-1.0,   help="")
     envarg.add_argument("--collision_reward",       type=float,     default=-10.0,  help="")
@@ -89,9 +87,10 @@ def args_init_dynamic(args):
         args.preset_lambda = True
     else:
         args.preset_lambda = False
-    if args.autolen:
-        lens = {8: 2, 16: 4, 32 :8, 64: 16}
-        args.hist_len = lens[args.image_dim] 
+    lens = {8: 2, 16: 4, 32 :8, 64: 16}
+    args.hist_len = lens[args.image_dim] 
+    max_steps = {8: 38, 16: 86, 32: 178, 64: 246}
+    args.max_steps = max_steps[args.image_dim]
     if not args.use_instant_distance:
         args.reward_bound = args.step_reward    # no collisions
     args.result_dir = 'results/{}_{}_im{}_s{}_his{}_{}.txt'.format(
@@ -406,15 +405,15 @@ if __name__ == '__main__':
     # only_test  = True
     only_test  = False
     args = args_init_static()
-    train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_lambda', 'frl_separate','frl_exc']
-    predict_net_list = ['alpha', 'beta', 'full', 'both', 'both','exc']
+    train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_separate']
+    predict_net_list = ['alpha', 'beta', 'full', 'both',]
     image_dim_list = [8,16,32,64]
     i=4
     args.add_train_noise = False
     args.add_predict_noise = False
     args.exclusive = False
     # args.exclusive = True
-    args.result_dir_mark = "new_net_test"
+    args.result_dir_mark = "exc_up_5"
     for j in range(1):
         j=0
         cpu_or_gpu(args)

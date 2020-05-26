@@ -25,6 +25,7 @@ class Environment(object):
         self.padded_state_shape = (self.image_dim + self.image_padding*2, self.image_dim + self.image_padding*2)
         self.state_alpha_dim = self.state_beta_dim + self.image_padding * 2
         self.pos_bias = np.array([self.image_padding, self.image_padding])
+        self.max_steps = args.max_steps
         self.load_data()
 
 
@@ -33,13 +34,6 @@ class Environment(object):
         self.images = data['all_images']
         self.states_xy = data['all_states_xy_by_domain']
         self.max_domains = len(self.images) # 8000
-        self.preset_max_steps = {8: 38, 16: 86, 32: 178, 64: 246}
-        if self.args.automax == 1:
-            self.max_steps = self.image_dim * self.image_dim / 2
-        elif self.args.automax == 2:
-            self.max_steps = self.preset_max_steps[self.image_dim]
-        else:
-            self.max_steps = self.image_dim * self.args.max_steps
 
 
     def is_valid_pos(self, xy):
@@ -98,8 +92,11 @@ class Environment(object):
 
     def act(self, action, steps):
         act_a, act_b = divmod(action, 4)
-        # new_a_xy = self.a_xy + self.move[act_a]
-        new_a_xy = self.a_xy
+        # act_a = (action//16)//4
+        # act_b = (action%16)%4
+
+        new_a_xy = self.a_xy + self.move[act_a]
+        # new_a_xy = self.a_xy
         new_b_xy = self.b_xy + self.move[act_b]
         # new_b_xy = self.b_xy
 
