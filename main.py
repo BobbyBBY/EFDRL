@@ -86,6 +86,12 @@ def args_init_dynamic(args):
     args.max_steps = preset_max_steps[args.image_dim]
     args.result_dir = 'results/{}_{}_im{}_s{}_his{}_{}.txt'.format(
         args.train_mode, args.predict_net, args.image_dim, args.state_dim, args.hist_len, args.result_dir_mark)
+    if args.test_only:
+        args.result_dir = 'results/{}_{}_im{}_s{}_his{}_{}_{}.txt'.format(
+        args.train_mode, args.predict_net, args.image_dim, args.state_dim, args.hist_len, args.result_dir_mark,'test_only')
+    else:
+        args.result_dir = 'results/{}_{}_im{}_s{}_his{}_{}.txt'.format(
+        args.train_mode, args.predict_net, args.image_dim, args.state_dim, args.hist_len, args.result_dir_mark)
     if args.use_gpu == 1:
          # 判断是否可以使用GPU
         if torch.cuda.is_available():
@@ -108,11 +114,6 @@ def start(args):
     }
 
     # loop over epochs
-    
-    if args.test_only:
-        file_dir = 'test_only_'+args.result_dir
-    else:
-        file_dir = args.result_dir
     
     with open(file_dir, 'w') as outfile:
         #打印所有参数
@@ -216,6 +217,7 @@ if __name__ == '__main__':
             args_init_dynamic(args)
             start(args)
             args.test_only  = True
+            args_init_dynamic(args)
             start(args)
     # 屏幕暂停
     input()
