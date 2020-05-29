@@ -143,7 +143,7 @@ def start(args):
                 rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'valid')
                 epoch_end_time = time.perf_counter()
                 if args.test_only:
-                    print("epoch noly valid", epoch_end_time-epoch_start_time)
+                    print("epoch only valid", epoch_end_time-epoch_start_time)
                 else:
                     print("epoch train + valid", epoch_end_time-epoch_start_time)
 

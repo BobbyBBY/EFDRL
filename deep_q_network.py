@@ -41,13 +41,13 @@ class FRLDQN(object):
             self.alpha_t_q = model.DQN_single(self.batch_size, self.hist_len, self.num_actions, self.state_alpha_dim).to(self.device)
             self.optimizer_dqn_alpha = optim.SGD(self.alpha_q.parameters(), lr=self.learning_rate) # 优化器
 
-        if self.args.train_mode == 'single_alpha':
+        elif self.args.train_mode == 'single_alpha':
             # construct DQN-beta network
             self.beta_q = model.DQN_single(self.batch_size, self.hist_len, self.num_actions, self.state_beta_dim).to(self.device)
             self.beta_t_q = model.DQN_single(self.batch_size, self.hist_len, self.num_actions, self.state_beta_dim).to(self.device)
             self.optimizer_dqn_beta = optim.SGD(self.beta_q.parameters(), lr=self.learning_rate)
         
-        if self.args.train_mode == 'full':
+        elif self.args.train_mode == 'full':
             # construct DQN-full network
             self.full_q = model.DQN_full(self.batch_size, self.hist_len, self.num_actions, self.state_alpha_dim, self.state_beta_dim).to(self.device)
             self.full_t_q = model.DQN_full(self.batch_size, self.hist_len, self.num_actions, self.state_alpha_dim, self.state_beta_dim).to(self.device)
@@ -81,7 +81,7 @@ class FRLDQN(object):
         linear_exchange = torch.rand(self.num_actions).to(self.device)*50 - 25
         self.change_train = linear_exchange.expand(self.batch_size, self.num_actions)
         self.change_predict = linear_exchange.expand(1, self.num_actions)
-        self.non_linear_exchange=random.sample(range(self.num_actions),self.num_actions)
+        # self.non_linear_exchange=random.sample(range(self.num_actions),self.num_actions)
 
     #独占式FRL中的g(x)
     def g_t(self,qvalue):
@@ -102,12 +102,12 @@ class FRLDQN(object):
         elif self.args.train_mode == 'full':
             self.full_t_q=copy.deepcopy(self.full_q)
 
-        elif self.args.train_mode == 'both1':
+        elif self.args.train_mode == 'frl_separate' or self.args.train_mode == 'fefrl':
             self.alpha_t_q=copy.deepcopy(self.alpha_q)
             self.beta_t_q=copy.deepcopy(self.beta_q)
             self.frl_t_q=copy.deepcopy(self.frl_q)
 
-        else: # both2
+        else: # sefrl
             self.alpha_t_q=copy.deepcopy(self.alpha_q)
             self.beta_t_q=copy.deepcopy(self.beta_q)
             self.frl_t_q=copy.deepcopy(self.frl_q)
@@ -164,7 +164,7 @@ class FRLDQN(object):
                 tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
                 tempQ_2 = tempQ.clone().detach()
             elif self.args.train_mode == 'fefrl':
-                tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
+                tempQ_yi_2 = g_t(self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta))
                 tempQ_yi_2 = self.g_t(tempQ_yi_2)
                 tempQ_2 = tempQ.clone().detach()
             elif self.args.train_mode == 'sefrl':
@@ -247,9 +247,9 @@ class FRLDQN(object):
                 q_beta += noise_beta
             if predict_net == 'both2':
                 if self.test_only:
-                    qvalue = self.frl_q.forward(q_alpha, q_beta)
-                else:
                     qvalue = self.frl_q_2.forward(q_alpha, q_beta)
+                else:
+                    qvalue = self.frl_q.forward(q_alpha, q_beta)
             elif predict_net == 'both1':
                 qvalue = self.frl_q.forward(q_alpha, q_beta)
             else:
@@ -275,7 +275,7 @@ class FRLDQN(object):
             if self.print_granularity == 2:
                 print('Saving alpha network weights ...')
             torch.save(self.alpha_q.state_dict(),os.path.join(weight_dir, "alpha_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
-        elif net_name == 'both11':
+        elif net_name == 'both1':
             if self.print_granularity == 2:
                 print('Saving three networks weights in sefrl ...')
             torch.save(self.frl_q.state_dict(),os.path.join(weight_dir, "frl_q_im%s_%s.pth" % (self.args.image_dim,self.args.result_dir_mark)))
