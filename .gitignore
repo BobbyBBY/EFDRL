@@ -1,3 +1,5 @@
+*.pyc
+*.txt
 single_alpha_alpha/
 single_beta_beta/
 full_full/
