@@ -154,24 +154,22 @@ class FRLDQN(object):
             max_postq = torch.max(targets,1)[0]
             tempQ_yi = self.frl_q.forward(tempQ_yi_alpha, tempQ_yi_beta)
             tempQ = tempQ_yi.clone().detach()
-            for i, action in enumerate(actions):
-                if terminals[i]:
-                    tempQ[i][action] = rewards[i]
-                else:
-                    tempQ[i][action] = rewards[i] + self.gamma * max_postq[i]
+            
+        for i, action in enumerate(actions):
+            if terminals[i]:
+                tempQ[i][action] = rewards[i]
+            else:
+                tempQ[i][action] = rewards[i] + self.gamma * max_postq[i]
 
-            if self.args.train_mode == 'frl_separate':
-                tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
-                tempQ_2 = tempQ.clone().detach()
-            elif self.args.train_mode == 'fefrl':
-                tempQ_yi_2 = g_t(self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta))
-                tempQ_yi_2 = self.g_t(tempQ_yi_2)
-                tempQ_2 = tempQ.clone().detach()
-            elif self.args.train_mode == 'sefrl':
-                pass
-            else: 
-                print('\n Wrong training mode! \n')
-                raise ValueError
+        if self.args.train_mode == 'frl_separate':
+            tempQ_yi_2 = self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta)
+            tempQ_2 = tempQ.clone().detach()
+        elif self.args.train_mode == 'fefrl':
+            tempQ_yi_2 = self.g_t(self.frl_q_2.forward(tempQ_yi_alpha, tempQ_yi_beta))
+            tempQ_yi_2 = self.g_t(tempQ_yi_2)
+            tempQ_2 = tempQ.clone().detach()
+        else: 
+            pass
 
 
         if self.args.train_mode == 'single_alpha':  
