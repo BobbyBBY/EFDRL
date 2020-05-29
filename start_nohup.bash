@@ -1,0 +1,1 @@
+nohup python -u main.py > frl.log 2>&1 &
