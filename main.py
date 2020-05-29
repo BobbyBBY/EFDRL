@@ -110,7 +110,7 @@ def start(args):
     # loop over epochs
     
     if args.test_only:
-        file_dir = args.result_dir + '_test_only'
+        file_dir = 'test_only_'+args.result_dir
     else:
         file_dir = args.result_dir
     
