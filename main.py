@@ -114,7 +114,7 @@ def start(args):
     }
 
     # loop over epochs
-    
+    file_dir = args.result_dir
     with open(file_dir, 'w') as outfile:
         #打印所有参数
         print('\nArguments:')
