@@ -65,11 +65,6 @@ class ReplayMemory(object):
             while True:
                 # sample one index (ignore states wraping over) 
                 index = np.random.randint(self.hist_len+1, self.count)
-                # # NB! prestate (last state) can be terminal state!
-                # if any(self.terminals[index-self.hist_len: index]) and count_ter < max_circles:
-                #     count_ter += 1
-                #     continue
-                # use prioritized replay trick
                 if self.priority:
                     if count_all < max_circles:
                         # if num_pos is already enough but current idx is also pos sample, continue

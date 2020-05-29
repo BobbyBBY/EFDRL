@@ -11,7 +11,7 @@ class Agent(object):
         self.env = env
         self.mem = mem
         self.net = dqn
-        
+        self.print_granularity = args.print_granularity
         self.exp_rate_start = args.exploration_rate_start
         self.exp_rate_end = args.exploration_rate_end
         self.exp_decay_steps = args.exploration_decay_steps
@@ -23,7 +23,7 @@ class Agent(object):
         self.num_actions = args.num_actions
         self.steps = 0
 
-
+    # epsilon贪心算法中衰减的探索率
     def _explorationRate(self):
         # calculate decaying exploration rate
         if self.total_train_steps < self.exp_decay_steps:
@@ -31,7 +31,6 @@ class Agent(object):
             (self.exp_rate_start - self.exp_rate_end) / self.exp_decay_steps
         else:
             return self.exp_rate_end
-
 
     def step(self, exploration_rate, predict_net):
         # exploration rate determines the probability of random moves
@@ -42,9 +41,6 @@ class Agent(object):
             state_alpha, state_beta = self.env.getState()
             qvalue = self.net.predict(state_alpha, state_beta, predict_net)
             action = torch.argmax(qvalue).item() # 这里应该调用net里的函数获得下标，降低耦合
-            # action2 = torch.argmax(qvalue[1]).item()
-            # action = (action//4)*4+action2%4
-            # action = action2*16+action
             
         # perform the action  
         self.steps += 1
@@ -59,7 +55,8 @@ class Agent(object):
         ep_loss, ep_rewards, details = [], [], []
         min_samples = self.mem.batch_size + self.mem.hist_len
         
-        # print('\n\n Training [%s] predicting [%s] ...' % (self.net.args.train_mode, predict_net))
+        if self.print_granularity == 2:
+            print('\n\n Training [%s] predicting [%s] ...' % (self.net.args.train_mode, predict_net))
         self.env.restart(data_flag='train', init=True)
         for episodes in range(train_episodes):
             self.steps = 0
@@ -83,23 +80,24 @@ class Agent(object):
                 ep_rewards.append(r)
                 self.total_train_steps += 1
 
-            # print('domain: %d \t min_steps: %d \t max_steps: %d' % (self.env.dom_ind, self.env.min_steps, self.env.max_steps))
+            if self.print_granularity == 2:
+                print('domain: %d \t min_steps: %d \t max_steps: %d' % (self.env.dom_ind, self.env.min_steps, self.env.max_steps))
             if len(ep_loss) > 0:
                 avg_loss = sum(ep_loss) / len(ep_loss)
                 max_loss = max(ep_loss)
                 min_loss = min(ep_loss)
-                # print('max_loss: {:>6.6f}\t min_loss: {:>6.6f}\t avg_loss: {:>6.6f}'.format(max_loss, min_loss, avg_loss))
+                if self.print_granularity == 2:
+                    print('max_loss: {:>6.6f}\t min_loss: {:>6.6f}\t avg_loss: {:>6.6f}'.format(max_loss, min_loss, avg_loss))
             
             sum_reward = sum(ep_rewards)
-            details.append(self.env.episode_reward) # 每一次act之后的reward值，似乎没啥意义，而且details也没有被使用
-            # print('epochs: {}\t episodes: {}\t steps: {}\t sum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, sum_reward))
-            
+            # details.append(self.env.episode_reward)
+            if self.print_granularity == 2:
+                print('epochs: {}\t episodes: {}\t steps: {}\t sum_reward: {:>6.6f}\n'.format(epoch, episodes, self.steps, sum_reward))
+
             ep_loss, ep_rewards = [], []
             self.env.restart(data_flag='train')
-
         self.env.last_train_dom = self.env.dom_ind  # record last training domain
-
-        return details
+        # return details
 
 
     def test(self, epoch, test_epidodes, outfile, predict_net, data_flag):
@@ -110,8 +108,9 @@ class Agent(object):
         avg_reward = 0.0
         log_step_success = {1: 0.0, 3: 0.0, 5: 0.0, 10: 0.0}
 
-        # print('\n\n %s %s net ...' % (data_flag, predict_net))
-        # outfile.write('\n\n %s %s net ...\n' % (data_flag, predict_net))
+        if self.print_granularity == 2:
+            print('\n\n %s %s net ...' % (data_flag, predict_net))
+            outfile.write('\n\n %s %s net ...\n' % (data_flag, predict_net))
         self.steps = 0
         self.env.restart(data_flag=data_flag, init=True)
         # for ep in tqdm(range(test_epidodes)):  # tqdm实现进度条
@@ -143,10 +142,11 @@ class Agent(object):
             log_step_success[k] = log_step_success[k] / test_epidodes
         log_step_success[-1] = success_rate
 
-        # print('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}'.format(epoch, avg_reward, avg_steps, step_diff))
-        # print('episodes: {}\t success_rate: {}\n'.format(test_epidodes, log_step_success)) 
-        # outfile.write('-----{}-----\n'.format(predict_net))
-        # outfile.write('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}\n'.format(epoch, avg_reward, avg_steps, step_diff))
-        # outfile.write('episodes: {}\t success_rate: {}\n\n'.format(test_epidodes, log_step_success))   
+        if self.print_granularity == 2:
+            print('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}'.format(epoch, avg_reward, avg_steps, step_diff))
+            print('episodes: {}\t success_rate: {}\n'.format(test_epidodes, log_step_success)) 
+            outfile.write('-----{}-----\n'.format(predict_net))
+            outfile.write('\n epochs: {}\t avg_reward: {:.2f}\t avg_steps: {:.2f}\t step_diff: {:.2f}\n'.format(epoch, avg_reward, avg_steps, step_diff))
+            outfile.write('episodes: {}\t success_rate: {}\n\n'.format(test_epidodes, log_step_success))   
 
         return log_step_success, avg_reward, step_diff

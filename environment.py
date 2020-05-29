@@ -4,8 +4,7 @@ import scipy.io as sio
 
 
 class Environment(object):
-    """ each state is a 0-1 matrix, 
-        where 0 denotes obstacle, 1 denotes space"""
+
     def __init__(self, args):
         self.args = args
         self.hist_len = args.hist_len 
@@ -18,6 +17,7 @@ class Environment(object):
         self.step_reward = args.step_reward
         self.collision_reward = args.collision_reward
         self.terminal_reward = args.terminal_reward
+        self.max_steps = args.max_steps
         self.move = np.array([[0, -1], [0, 1], [-1, 0], [1, 0]]) # North, South, West, East
         self.last_train_dom = -1
         self.border_start = self.image_padding + 1  # >= 1 
@@ -25,7 +25,6 @@ class Environment(object):
         self.padded_state_shape = (self.image_dim + self.image_padding*2, self.image_dim + self.image_padding*2)
         self.state_alpha_dim = self.state_beta_dim + self.image_padding * 2
         self.pos_bias = np.array([self.image_padding, self.image_padding])
-        self.max_steps = args.max_steps
         self.load_data()
 
 
@@ -35,12 +34,9 @@ class Environment(object):
         self.states_xy = data['all_states_xy_by_domain']
         self.max_domains = len(self.images) # 8000
 
-
     def is_valid_pos(self, xy):
         # not in the border
-        #return not (xy[0] >= self.image_dim-1 or xy[1] >= self.image_dim-1)
         return not (xy[0] > self.border_end or xy[0] < self.border_start or xy[1] > self.border_end or xy[1] < self.border_start)
-
 
     def restart(self, data_flag, init=False):
         if data_flag == 'train':    # training 
@@ -71,12 +67,14 @@ class Environment(object):
             self.state[pd:-pd, pd:-pd] = self.images[self.dom_ind, 0]  # 32 * 32
             self.paths = self.states_xy[self.dom_ind, 0]
             for i in range(len(self.paths)):
+                # 由于是随机生成的地图，所以可能越界
                 try:
-                    self.a_xy = self.paths[i, 0][0] + self.pos_bias   #  initial position of alpha
-                    self.b_xy = self.paths[i, 0][-1] + self.pos_bias  #  initial position of beta
-                    self.min_steps = len(self.paths[i, 0]) / 2  # shortest path
+                    self.a_xy = self.paths[i, 0][0] + self.pos_bias   #  alpha的初始位置
+                    self.b_xy = self.paths[i, 0][-1] + self.pos_bias  #  beta的初始位置
+                    self.min_steps = len(self.paths[i, 0]) / 2  # 计算理论上最短路径
                 except:
                     continue
+                # 如果a和b的初始位置不与障碍物重合则使用该地图，重合了就抛弃这个地图，while循环下一张地图
                 if self.is_valid_pos(self.a_xy) and self.is_valid_pos(self.b_xy):
                     invalid_flag = False
                     break
@@ -92,14 +90,10 @@ class Environment(object):
 
     def act(self, action, steps):
         act_a, act_b = divmod(action, 4)
-        # act_a = (action//16)//4
-        # act_b = (action%16)%4
-
         new_a_xy = self.a_xy + self.move[act_a]
-        # new_a_xy = self.a_xy
         new_b_xy = self.b_xy + self.move[act_b]
-        # new_b_xy = self.b_xy
 
+        # 0为障碍物，1为空地
         if self.is_valid_pos(new_a_xy) and self.state[new_a_xy[0], new_a_xy[1]] != 0:
             # not in the border and not obstacle
             self.a_xy = new_a_xy
@@ -117,9 +111,8 @@ class Environment(object):
         reward = r_a + r_b
         manhattan_distance = abs(sum(self.b_xy - self.a_xy))
 
-        if self.args.use_instant_distance:
-            r_ab = self.image_dim / (manhattan_distance + 1.0) # 加一避免除数为0
-            reward += r_ab
+        r_ab = self.image_dim / (manhattan_distance + 1.0) # 加一避免除数为0
+        reward += r_ab
         if manhattan_distance <= 1:
             reward += self.terminal_reward
         self.episode_reward.append([r_a, r_b, manhattan_distance])
@@ -134,7 +127,6 @@ class Environment(object):
         pd = self.image_padding
         self.states_alpha[0, : -1] = self.states_alpha[0, 1: ]
         self.states_alpha[0, -1] = self.state[self.a_xy[0]-1-pd: self.a_xy[0]+2+pd, self.a_xy[1]-1-pd: self.a_xy[1]+2+pd]
-
         self.states_beta[0, : -1] = self.states_beta[0, 1: ]
         self.states_beta[0, -1] = self.state[self.b_xy[0]-1: self.b_xy[0]+2, self.b_xy[1]-1: self.b_xy[1]+2]
 
@@ -143,7 +135,6 @@ class Environment(object):
 
     def getState(self):
         return self.states_alpha, self.states_beta
-
 
     def isTerminal(self):
         return self.terminal
