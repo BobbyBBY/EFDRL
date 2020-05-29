@@ -11,6 +11,7 @@ class FRLDQN(object):
     """docstring for FRLNetwork"""
     def __init__(self, args):
         self.args = args
+        self.test_only = args.test_only
         self.gamma = args.gamma
         self.print_granularity = args.print_granularity
         self.add_noise = args.add_noise
@@ -101,17 +102,15 @@ class FRLDQN(object):
         elif self.args.train_mode == 'full':
             self.full_t_q=copy.deepcopy(self.full_q)
 
-        elif self.args.train_mode == 'both11':
+        elif self.args.train_mode == 'both1':
             self.alpha_t_q=copy.deepcopy(self.alpha_q)
             self.beta_t_q=copy.deepcopy(self.beta_q)
             self.frl_t_q=copy.deepcopy(self.frl_q)
 
-        else: # both21 both22
+        else: # both2
             self.alpha_t_q=copy.deepcopy(self.alpha_q)
             self.beta_t_q=copy.deepcopy(self.beta_q)
             self.frl_t_q=copy.deepcopy(self.frl_q)
-
-
 
     def train(self, minibatch):
         pre_states_alpha, pre_states_beta, actions, rewards, post_states_alpha, post_states_beta, terminals = minibatch
@@ -235,6 +234,9 @@ class FRLDQN(object):
         elif predict_net == 'full':
             qvalue = self.full_q.forward(torch.Tensor(state_alpha).to(self.device), torch.Tensor(state_beta).to(self.device))
 
+        elif self.test_only and predict_net == 'both1':
+            qvalue = self.alpha_q.forward(torch.Tensor(state_alpha).to(self.device))
+            
         else: 
             q_alpha = self.alpha_q.forward(torch.Tensor(state_alpha).to(self.device))
             q_beta = self.beta_q.forward(torch.Tensor(state_beta).to(self.device))
@@ -243,10 +245,13 @@ class FRLDQN(object):
                 noise_beta = torch.normal(0.0, self.stddev, q_beta.shape).to(self.device)
                 q_alpha += noise_alpha
                 q_beta += noise_beta
-            if predict_net == 'both21' or predict_net == 'both11':
+            if predict_net == 'both2':
+                if self.test_only:
+                    qvalue = self.frl_q.forward(q_alpha, q_beta)
+                else:
+                    self.frl_q_2.forward(q_alpha, q_beta)
+            elif predict_net == 'both1':
                 qvalue = self.frl_q.forward(q_alpha, q_beta)
-            elif predict_net == 'both22':
-                qvalue = self.frl_q_2.forward(q_alpha, q_beta)
             else:
                 print('\n Wrong predict mode! \n')
                 raise ValueError

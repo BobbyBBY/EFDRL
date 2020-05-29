@@ -65,6 +65,7 @@ def args_init_static():
     mainarg.add_argument("--valid_episodes",    type=int,       default=800,        help="")
     mainarg.add_argument("--test_episodes",     type=int,       default=800,        help="")
     mainarg.add_argument("--use_gpu",           type=int,       default=0,          help="")
+    mainarg.add_argument("--test_net",          type=str,       default='alpha',   help="")
     mainarg.add_argument("--result_dir_mark",   type=str,       default='exclusive2_200',   help="")
     mainarg.add_argument("--train_mode",        type=str,       default='single_alpha',     help='')
     mainarg.add_argument("--device_type",       type=torch.device,   default=torch.device("cpu"),    help="")
@@ -202,7 +203,7 @@ if __name__ == '__main__':
     args.test_only  = False
     args.print_granularity = 1
     train_mode_list = ['single_alpha', 'single_beta', 'full', 'frl_separate','fefrl','sefrl']
-    predict_net_list = ['alpha','beta','full','both21','both21','both11',         'both22','both22','alpha']
+    predict_net_list = ['alpha','beta','full','both2','both2','both1']
     image_dim_list = [8,16,32,64]
     args.add_noise = False
     args.result_dir_mark = "final_all"
@@ -215,10 +216,6 @@ if __name__ == '__main__':
             args_init_dynamic(args)
             start(args)
             args.test_only  = True
-            if i==3 or i==4:
-                args.predict_net = predict_net_list[6]
-            elif i==5:
-                args.predict_net = predict_net_list[8]
             start(args)
     # 屏幕暂停
     input()
