@@ -249,7 +249,7 @@ class FRLDQN(object):
                 if self.test_only:
                     qvalue = self.frl_q.forward(q_alpha, q_beta)
                 else:
-                    self.frl_q_2.forward(q_alpha, q_beta)
+                    qvalue = self.frl_q_2.forward(q_alpha, q_beta)
             elif predict_net == 'both1':
                 qvalue = self.frl_q.forward(q_alpha, q_beta)
             else:
