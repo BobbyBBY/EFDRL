@@ -208,11 +208,11 @@ if __name__ == '__main__':
     image_dim_list = [8,16,32,64]
     args.add_noise = False
     args.result_dir_mark = "final_all"
-    start_flag = 12 # 方便从中途开始
+    start_flag = 15 # 方便从中途开始
     for j in range(4):
         for i in range(6):
             if (j*6+i)<=start_flag:
-                break
+                continue
             args.test_only  = False
             args.train_mode = train_mode_list[i]
             args.predict_net = predict_net_list[i]
