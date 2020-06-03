@@ -11,6 +11,7 @@ from replay_memory import ReplayMemory
 
 
 def args_init_static():
+    # 一共47个参数
     parser = argparse.ArgumentParser()
 
     envarg = parser.add_argument_group('Environment')
@@ -25,7 +26,6 @@ def args_init_static():
     envarg.add_argument("--step_reward",            type=float,     default=-1.0,  help="")
     envarg.add_argument("--collision_reward",       type=float,     default=-10.0, help="")
     envarg.add_argument("--terminal_reward",        type=float,     default=50.0,  help="")
-
     memarg = parser.add_argument_group('Replay memory')
     memarg.add_argument("--positive_rate",      type=float, default=0.9,    help="")
     memarg.add_argument("--reward_bound",       type=float, default=0.0,    help="")
@@ -114,6 +114,7 @@ def start(args):
     }
 
     # loop over epochs
+    file_all_dir = 'all_{}'.format(args.result_dir_mark)
     file_dir = args.result_dir
     with open(file_dir, 'w') as outfile:
         #打印所有参数
@@ -184,6 +185,13 @@ def start(args):
         outfile.write('Total time cost: %ds' % (end - start))
         print('Current time is: %s' % get_time())
         print('Total time cost: %ds\n' % (end - start))
+        with open(file_all_dir, 'a') as file_all:
+            file_all.write('\n\n{}\n'.format(args.train_mode))
+            file_all.write('Best results:\n')
+            for data_flag, results in best_result.items():
+                file_all.write('\t{}\n'.format(data_flag))
+                for k, v in results.items():
+                    file_all.write('\t\t{}: {}\n'.format(k, v))
 
 
 def update_best(result, data_flag, epoch, rate, reward, diff, net_name=''):
@@ -207,12 +215,15 @@ if __name__ == '__main__':
     predict_net_list = ['alpha','beta','full','both2','both2','both1']
     image_dim_list = [8,16,32,64]
     args.add_noise = False
-    args.result_dir_mark = "final_all"
-    start_flag = 15 # 方便从中途开始
+    args.result_dir_mark = "20200603"
+    start_flag = 0 # 方便从中途开始,当前编号要执行
+    end_flag = 23 # 方便从中途结束，当前编号要执行，最大有效23
     for j in range(4):
         for i in range(6):
-            if (j*6+i)<=start_flag:
+            if (j*6+i)<start_flag:
                 continue
+            if (j*6+i)>end_flag:
+                break
             args.test_only  = False
             args.train_mode = train_mode_list[i]
             args.predict_net = predict_net_list[i]
@@ -222,6 +233,9 @@ if __name__ == '__main__':
             args.test_only  = True
             args_init_dynamic(args)
             start(args)
+        else:
+            continue
+        break
     # 屏幕暂停
     input()
 

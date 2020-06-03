@@ -25,6 +25,14 @@ y= [12,-5,14,5]
 def get_time():
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-while True:
-    time.sleep(2)
-    print(get_time())
+# while True:
+#     time.sleep(2)
+#     print(get_time())
+for i in range(4):
+    print("i:{}".format(i))
+    for j in range(4):
+        print("j:{}".format(j))
+        break
+    else:
+        continue
+    break
