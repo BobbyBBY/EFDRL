@@ -172,7 +172,7 @@ def start(args):
 
         print('\n\n Training [%s] predicting [%s] ...' % (args.train_mode, args.predict_net))
         print('Best results:')
-        outfile.write('\n\n{}\n'.format(args.train_mode))
+        outfile.write('\n\n{}\n'.format(file_dir))
         outfile.write('Best results:\n')
         for data_flag, results in best_result.items():
             print('\t{}'.format(data_flag))
@@ -186,7 +186,7 @@ def start(args):
         print('Current time is: %s' % get_time())
         print('Total time cost: %ds\n' % (end - start))
         with open(file_all_dir, 'a') as file_all:
-            file_all.write('\n\n{}\n'.format(args.train_mode))
+            file_all.write('\n\n{}\n'.format(file_dir))
             file_all.write('Best results:\n')
             for data_flag, results in best_result.items():
                 file_all.write('\t{}\n'.format(data_flag))
