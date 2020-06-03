@@ -35,7 +35,7 @@ class Environment(object):
         self.max_domains = len(self.images) # 8000
 
     def is_valid_pos(self, xy):
-        # not in the border
+        # 不在边界内
         return not (xy[0] > self.border_end or xy[0] < self.border_start or xy[1] > self.border_end or xy[1] < self.border_start)
 
     def restart(self, data_flag, init=False):
@@ -95,10 +95,10 @@ class Environment(object):
 
         # 0为障碍物，1为空地
         if self.is_valid_pos(new_a_xy) and self.state[new_a_xy[0], new_a_xy[1]] != 0:
-            # not in the border and not obstacle
             self.a_xy = new_a_xy
             r_a = self.step_reward
         else:
+            # 不在边界内或遇到障碍物
             r_a = self.collision_reward
         
         if self.is_valid_pos(new_b_xy) and self.state[new_b_xy[0], new_b_xy[1]] != 0:
@@ -107,7 +107,7 @@ class Environment(object):
         else:
             r_b = self.collision_reward
             
-        # compute reward
+        # 计算激励
         reward = r_a + r_b
         manhattan_distance = abs(sum(self.b_xy - self.a_xy))
 
@@ -117,13 +117,11 @@ class Environment(object):
             reward += self.terminal_reward
         self.episode_reward.append([r_a, r_b, manhattan_distance])
 
-        # terminal # distance = 0 or 1 means that alpha meets beta
         if manhattan_distance <= 1 or steps >= self.max_steps:
             self.terminal = True
         else:
             self.terminal = False
-
-        # add current state to states history 
+ 
         pd = self.image_padding
         self.states_alpha[0, : -1] = self.states_alpha[0, 1: ]
         self.states_alpha[0, -1] = self.state[self.a_xy[0]-1-pd: self.a_xy[0]+2+pd, self.a_xy[1]-1-pd: self.a_xy[1]+2+pd]

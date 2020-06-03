@@ -78,6 +78,7 @@ class FRLDQN(object):
 
     # 准备独占式gx需要的张量
     def exc_p(self):
+        # 这里应该用key生成张量——待修改
         linear_exchange = torch.rand(self.num_actions).to(self.device)*50 - 25
         self.change_train = linear_exchange.expand(self.batch_size, self.num_actions)
         self.change_predict = linear_exchange.expand(1, self.num_actions)

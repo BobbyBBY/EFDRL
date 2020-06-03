@@ -2,7 +2,6 @@
 import numpy as np
 import torch
 class ReplayMemory(object):
-    """docstring for ReplayMemory"""
     def __init__(self, args):
         self.size = args.replay_size
         self.hist_len = args.hist_len
@@ -35,7 +34,6 @@ class ReplayMemory(object):
         
     def add(self, action, reward, state_alpha, state_beta, terminal):
         #assert state.shape == self.dims
-        # NB(Nota Bene)! state is post-state, after action and reward
         self.actions[self.current] = action
         self.rewards[self.current] = reward
         self.states_alpha[self.current] = state_alpha[0, -1]
@@ -59,19 +57,19 @@ class ReplayMemory(object):
         count_neg = 0
         count_all = 0
         count_ter = 0
-        max_circles = 1000 # max times for choosing positive samples or nagative samples
+        max_circles = 1000 # 在开启priority时，最大选择次数
         while len(indices) < self.batch_size:
-            # find random index 
+            
             while True:
-                # sample one index (ignore states wraping over) 
+                # 从随机下标开始
                 index = np.random.randint(self.hist_len+1, self.count)
                 if self.priority:
                     if count_all < max_circles:
-                        # if num_pos is already enough but current idx is also pos sample, continue
+                        # 如果已经满足num_pos，但是当前记录仍是positive，则continue
                         if (count_pos >= pos_amount) and (self.rewards[index] >= self.reward_bound):
                             count_all += 1
                             continue
-                        # elif num_nag is already enough but current idx is also nag sample, continue
+                        # negitive亦然
                         elif (count_neg >= self.batch_size - pos_amount) and (self.rewards[index] < self.reward_bound): 
                             count_all += 1
                             continue
@@ -82,7 +80,7 @@ class ReplayMemory(object):
                 break
             
             for i in range(1, self.hist_len + 1):
-                if self.terminals[index - i]: # only the last state of the history can be terminal
+                if self.terminals[index - i]: # 只有在当前地图的最后一条记录才能被设为terminal
                     break
                 cur_ind = self.hist_len - i
                 pre_states_alpha[len(indices)][cur_ind] = self.states_alpha[index - i]
@@ -91,7 +89,7 @@ class ReplayMemory(object):
                 post_states_beta[len(indices)][cur_ind] = self.states_beta[index - i + 1]
             indices.append(index)
 
-        # copy actions, rewards and terminals with direct slicing
+        # copy
         actions = self.actions[indices]  
         rewards = self.rewards[indices]
         terminals = self.terminals[indices]

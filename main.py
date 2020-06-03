@@ -80,10 +80,13 @@ def get_time():
 def args_init_dynamic(args):
     if args.load_weights:
         args.exploration_rate_start = args.exploration_rate_end
+    # 动态观察历史长度
     lens = {8: 2, 16: 4, 32 :8, 64: 16}
     args.hist_len = lens[args.image_dim]
+    # 动态最长步数
     preset_max_steps = {8: 38, 16: 86, 32: 178, 64: 246}
     args.max_steps = preset_max_steps[args.image_dim]
+    # 输出到这个文件
     args.result_dir = 'results/{}_{}_im{}_s{}_his{}_{}.txt'.format(
         args.train_mode, args.predict_net, args.image_dim, args.state_dim, args.hist_len, args.result_dir_mark)
     if args.test_only:
@@ -103,7 +106,7 @@ def args_init_dynamic(args):
 
 def start(args):
     
-    # Initial environment, replay memory, deep_q_net and agent
+    # 初始化 environment, replay memory, deep_q_net and agent
     env = Environment(args)
     mem = ReplayMemory(args)
     net = FRLDQN(args)
@@ -113,7 +116,7 @@ def start(args):
                     'test': {'success_rate': {1: 0., 3: 0., 5: 0., 10: 0., -1 : 0.}, 'avg_reward': 0., 'log_epoch': -1, 'step_diff': -1}
     }
 
-    # loop over epochs
+    # 开始epoch循环
     file_all_dir = 'all_{}'.format(args.result_dir_mark)
     file_dir = args.result_dir
     with open(file_dir, 'w') as outfile:
@@ -139,8 +142,10 @@ def start(args):
         try:
             for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
                 epoch_start_time = time.perf_counter()
+                # 训练
                 if not args.test_only:
                     agent.train(epoch, args.train_episodes, outfile, args.predict_net)
+                # 验证
                 rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'valid')
                 epoch_end_time = time.perf_counter()
                 if args.test_only:
@@ -148,21 +153,26 @@ def start(args):
                 else:
                     print("epoch train + valid", epoch_end_time-epoch_start_time)
 
+                # 如果这次验证结果由于之前的结果
                 if rate[args.success_base] > best_result['valid']['success_rate'][args.success_base]:
                     update_best(best_result, 'valid', epoch, rate, reward, diff)
                     print('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n'.format(epoch, rate, reward, diff))
                     outfile.write('best_epoch: {}\t best_success: {}\t avg_reward: {}\t step_diff: {}\n\n'.format(epoch, rate, reward, diff))
 
+                    # 测试
                     rate, reward, diff = agent.test(epoch, args.test_episodes, outfile, args.predict_net, 'test')
                     update_best(best_result, 'test', epoch, rate, reward, diff)
                     print('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
                     outfile.write('\n Test results:\n success_rate: {}\t avg_reward: {}\t step_diff: {}\n'.format(rate, reward, diff))
-
+                    
+                    # 保存当前网络
                     if args.save_weights:
                         filename = 'weights/%s_%s' % (args.train_mode, args.predict_net)
                         net.save_weights(filename, args.predict_net)
                         if args.print_granularity == 2:
                             print('Saved weights %s ...\n' % filename)
+                
+                # 如果stop_epoch_gap之后模型没有任何提升，这提早结束训练
                 if args.early_stop and (epoch - best_result['valid']['log_epoch'] >= args.stop_epoch_gap):
                     if args.print_granularity == 2:
                         print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
@@ -170,6 +180,7 @@ def start(args):
         except KeyboardInterrupt:
             print('\n Manually kill the program ... \n')
 
+        # 保存最优训练、测试结果
         print('\n\n Training [%s] predicting [%s] ...' % (args.train_mode, args.predict_net))
         print('Best results:')
         outfile.write('\n\n{}\n'.format(file_dir))
