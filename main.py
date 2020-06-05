@@ -117,7 +117,7 @@ def start(args):
     }
 
     # 开始epoch循环
-    file_all_dir = 'all_{}'.format(args.result_dir_mark)
+    file_all_dir = 'test_result_{}'.format(args.result_dir_mark)
     file_dir = args.result_dir
     with open(file_dir, 'w') as outfile:
         #打印所有参数
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     predict_net_list = ['alpha','beta','full','both2','both2','both1']
     image_dim_list = [8,16,32,64]
     args.add_noise = False
-    args.result_dir_mark = "20200603"
+    args.result_dir_mark = "20200605"
     start_flag = 0 # 方便从中途开始,当前编号要执行
     end_flag = 23 # 方便从中途结束，当前编号要执行，最大有效23
     for j in range(4):
