@@ -226,9 +226,9 @@ if __name__ == '__main__':
     predict_net_list = ['alpha','beta','full','both2','both2','both1']
     image_dim_list = [8,16,32,64]
     args.add_noise = False
-    args.result_dir_mark = "20200605"
-    start_flag = 0 # 方便从中途开始,当前编号要执行
-    end_flag = 23 # 方便从中途结束，当前编号要执行，最大有效23
+    args.result_dir_mark = "20200611"
+    start_flag = 4 # 方便从中途开始,当前编号要执行
+    end_flag = 4 # 方便从中途结束，当前编号要执行，最大有效23
     for j in range(4):
         for i in range(6):
             if (j*6+i)<start_flag:

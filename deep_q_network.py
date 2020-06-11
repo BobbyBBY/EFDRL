@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import copy
 import random
+import hashlib
 
 class FRLDQN(object):
     """docstring for FRLNetwork"""
@@ -79,6 +80,11 @@ class FRLDQN(object):
     # 准备独占式gx需要的张量
     def exc_p(self):
         # 这里应该用key生成张量——待修改
+        key = self.args.result_dir_mark
+        md5_str=hashlib.md5(key.encode("utf8")).hexdigest()
+        seed = int(md5_str[0:10], 16)
+        torch.manual_seed(seed)
+        linear_exchange = torch.rand(16)*50 - 25
         linear_exchange = torch.rand(self.num_actions).to(self.device)*50 - 25
         self.change_train = linear_exchange.expand(self.batch_size, self.num_actions)
         self.change_predict = linear_exchange.expand(1, self.num_actions)
