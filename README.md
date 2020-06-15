@@ -1,4 +1,5 @@
 # EFDRL
+详细说明  
 http://bobbybby.top/2020-06-14-frl/
 
 ## 运行环境：
